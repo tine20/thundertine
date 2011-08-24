@@ -28,83 +28,77 @@ var folder = {
 
   update: function() {
 	// ask folders
-	var folderRequest = '<?xml version="1.0" encoding="UTF-8"?>'+"\n"+
-		'<FolderHierarchy_FolderSync><FolderHierarchy_SyncKey>' + 
-		config.folderSyncKey + 
-		'</FolderHierarchy_SyncKey></FolderHierarchy_FolderSync>';
+	helper.debugOut("folder.update()\n");
+	var folderRequest = ["FolderHierarchy_FolderSync", ["FolderHierarchy_SyncKey", config.folderSyncKey]];
 	wbxml.httpRequest(folderRequest, 'FolderSync'); 
   }, 
 
   updateFinish: function(req) { 
-	var response = wbxml.doXml(req.responseText); 
-	if (response == false)
+	helper.debugOut("folder.updateFinish()\n");
+	var response = wbxml.wbxml2obj(req.responseText), r, i, entry, folder_id, folder_name; 
+	if (!response) {
 		return false;
-	if (config.folderSyncKey == 0) {
-		config.folderIds = Array();
-		config.folderNames = Array();
-		config.folderTypes = Array(); 
-	} 
-	for (var i = 0; i < response.firstChild.children.length; i++) {
-		// status
-		if (response.firstChild.children[i].nodeName == 'Status' && response.firstChild.children[i].firstChild.nodeValue != '1') {
-			helper.prompt(errortxt.folder['code'+response.firstChild.children[i].firstChild.nodeValue]);
-			return false;
-		}
-		else if (response.firstChild.children[i].nodeName == 'FolderHierarchy_SyncKey')
-			config.folderSyncKey = response.firstChild.children[i].firstChild.nodeValue;
-		else if (response.firstChild.children[i].nodeName == 'FolderHierarchy_Changes' && response.firstChild.children[i].children.length > 0) { 
-			for (var c=0; c<response.firstChild.children[i].children.length; c++) {
-				var node = response.firstChild.children[i].children[c];
-				var tag = node.nodeName; 
-				if (tag == 'FolderHierarchy_Add') { 
-					for (var f=0; f<node.children.length; f++) { 
-						var subtag_name = node.children[f].nodeName;
-						// if FolderHierarchy_DisplayName starts with '&' it's empty
-						if ((subtag_name=='FolderHierarchy_DisplayName') && (node.children[f].firstChild == null))
-							var subtag_value = '???';
-						else
-							var subtag_value = node.children[f].firstChild.nodeValue;						
-						if (subtag_name == 'FolderHierarchy_ServerId')
-							config.folderIds.push(subtag_value);
-						else if (subtag_name == 'FolderHierarchy_DisplayName') 
-							config.folderNames.push(subtag_value);
-						else if (subtag_name == 'FolderHierarchy_Type')
-							config.folderTypes.push(subtag_value); 
-					}
-				}
-				else if (tag == 'FolderHierarchy_Update') {
-					for (var f=0; f<node.children.length; f++) {
-						var subtag_name = node.children[f].nodeName;
-						// if FolderHierarchy_DisplayName starts with '&' it's empty
-						if ((subtag_name=='FolderHierarchy_DisplayName') && (node.children[f].firstChild == null))
-							var subtag_value = '???';
-						else
-							var subtag_value = node.children[f].firstChild.nodeValue;
-						if (subtag_name == 'FolderHierarchy_ServerId')
-							var folder_id = subtag_value;
-						else if (subtag_name == 'FolderHierarchy_DisplayName')
-							var folder_name = subtag_value;
-					}
-					config.folderNames[config.folderIds.indexOf(folder_id)] = folder_name;
-					
-				}
-				else if (tag == 'FolderHierarchy_Delete') {
-					for (var f=0; f<node.children.length; f++) {
-						var subtag_name = node.children[f].nodeName;
-						// if FolderHierarchy_DisplayName starts with '&' it's empty
-						if ((subtag_name=='FolderHierarchy_DisplayName') && (node.children[f].firstChild == null))
-							var subtag_value = '???';
-						else
-							var subtag_value = node.children[f].firstChild.nodeValue;
-						if (subtag_name == 'FolderHierarchy_ServerId') {
-							config.folderNames.splice(config.folderIds.indexOf(subtag_value), 1);
-							config.folderTypes.splice(config.folderIds.indexOf(subtag_value), 1);
-							config.folderIds.splice(config.folderIds.indexOf(subtag_value), 1);
-						}
-					}
-				}
+	}
+	
+	//{"FolderHierarchy_FolderSync":
+	//   {"FolderHierarchy_Status":"1",
+	//    "FolderHierarchy_SyncKey":"xxx",
+	//    "FolderHierarchy_Changes":
+	//       {"FolderHierarchy_Count":"20",
+	//        "FolderHierarchy_Add":[
+	//           {"FolderHierarchy_ServerId":"xxx",
+	//            "FolderHierarchy_ParentId":"0",
+	//            "FolderHierarchy_DisplayName":"Inbox",
+	//            "FolderHierarchy_Type":"2"},
+	//           {"FolderHierarchy_ServerId":"xxx",
+	//            "FolderHierarchy_ParentId":"0",
+	//            "FolderHierarchy_DisplayName":"Outbox",
+	//            "FolderHierarchy_Type":"6"},
+	//           ...
+	//       ]}
+	//   }
+	//}
+
+	if (config.folderSyncKey == 0) {	// first request
+		config.folderIds = [];
+		config.folderNames = [];
+		config.folderTypes = []; 
+	}
+	
+	if (response.FolderHierarchy_FolderSync.FolderHierarchy_Status != '1') {
+		helper.prompt(errortxt.folder['code'+response.firstChild.children[i].firstChild.nodeValue]);
+		return false;
+	}
+
+	config.folderSyncKey = response.FolderHierarchy_FolderSync.FolderHierarchy_SyncKey;
+	
+	r = response.FolderHierarchy_FolderSync.FolderHierarchy_Changes;
+	if (r) {
+		if (r.FolderHierarchy_Add) {
+			for (i = 0; i < r.FolderHierarchy_Add.length; i++) {
+				entry = r.FolderHierarchy_Add[i];
+				config.folderIds.push(entry.FolderHierarchy_ServerId);
+				config.folderNames.push(entry.FolderHierarchy_DisplayName);
+				config.folderTypes.push(entry.FolderHierarchy_Type); 
 			}
-		} 
+		}
+		if (r.FolderHierarchy_Update) {
+			for (i = 0; i < r.FolderHierarchy_Update.length; i++) {
+				entry = r.FolderHierarchy_Update[i];
+				folder_id = entry.FolderHierarchy_ServerId;
+				folder_name = entry.FolderHierarchy_DisplayName;
+				config.folderNames[config.folderIds.indexOf(folder_id)] = folder_name;
+			}
+		}
+		if (r.FolderHierarchy_Delete) {
+			for (i = 0; i < r.FolderHierarchy_Delete.length; i++) {
+				entry = r.FolderHierarchy_Delete[i];
+				folder_id = entry.FolderHierarchy_ServerId;
+				config.folderNames.splice(config.folderIds.indexOf(folder_id), 1);
+				config.folderTypes.splice(config.folderIds.indexOf(folder_id), 1);
+				config.folderIds.splice(config.folderIds.indexOf(folder_id), 1);
+			}
+		}
 	}
 	return true;
   },
@@ -112,38 +106,31 @@ var folder = {
   /*
    * before sync make sure folder still exists
    */
-  stillExists: function() {
-	if (config.folderIds.indexOf(config.contactsRemoteFolder) >= 0)
-		return true;
-	else
-		return false;
+  stillExists: function(collectionId) {
+	return config.folderIds.indexOf(collectionId) >= 0;
   }, 
 
   /*
    * preference GUI needs this
    */
   listFolderIds: function(type) {
-	var resArr = Array();
+	var resArr = [], i;
 	for (i in config.folderIds) {
-		if(type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14))
+		if (type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14)) {
 			resArr.push(config.folderIds[i]);
+		}
 	}
-	if (resArr.length > 0)
-		return resArr;		
-	else
-		return false;		
+	return resArr.length > 0 ? resArr : false;
   },
 
   listFolderNames: function(type) {
-	var resArr = Array();
+	var resArr = [], i;
 	for (i in config.folderIds) {
-		if(type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14))
+		if (type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14)) {
 			resArr.push(config.folderNames[i]);
+		}
 	}
-	if (resArr.length > 0)
-		return resArr;		
-	else
-		return false;
+	return resArr.length > 0 ? resArr : false;
   }
 
-}
+};

@@ -24,16 +24,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
   var deviceId = prefs.getCharPref('deviceId');
 
-	// if under Windows Button Cancel is pressed, remember pwd and config
-	var oldpwd = '';
-	var oldConfig = { }
+  // if under Windows Button Cancel is pressed, remember pwd and config
+  var oldpwd = '';
 
-  var ttine = { } 
+  var ttine = { };
   ttine.strings = window.opener.document.getElementById("ttine-strings");
 
   function onopen() {
-	// save current values to restore it on cancel
-	oldConfig = config;
+    config.read(); 		// this is needed, because the thunderbirdOptions.xul windows is in a different javascript scope!
 	// get password and clear it in manager (to store it at close again)
 	var passwordManager = Components.classes["@mozilla.org/login-manager;1"]
 		.getService(Components.interfaces.nsILoginManager);
@@ -43,9 +41,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	var nsLoginInfo = new Components.Constructor("@mozilla.org/login-manager/loginInfo;1",
 		Components.interfaces.nsILoginInfo, "init");
 	var username = document.getElementById('user').value;
+	var i;
 	if ( document.getElementById('host').value != '' && username != '') {
 		var logins = passwordManager.findLogins({}, url, null, 'Tine 2.0 Active Sync');  
-		for (var i = 0; i < logins.length; i++) { 
+		for (i = 0; i < logins.length; i++) { 
 			if (logins[i].httpRealm == 'Tine 2.0 Active Sync') { 
 				var loginInfo = new nsLoginInfo(
 					url, null, 'Tine 2.0 Active Sync', document.getElementById('user').value, 
@@ -62,13 +61,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	localAbs();
 	remoteFolders();
   }
-
+  
   /*
 	@ok within MS Windows: true=="Button Ok", undefined=="Button Cancel" 
 	Important: Closing PrefWindow will fire onclose twice, if "Button Ok" is pressed. 
-	First with true, sencond time with undefined!!
+	First with true, second time with undefined!!
   */
-  function onclose(ok) { 
+  function onclose(ok) {
 
 	// linux close button or Windows OK Button pressed
 	if (document.getElementById('ThundertinePreferences').instantApply || ok) { 
@@ -84,25 +83,59 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			document.getElementById('password').value, '', ''
 		);
 		// if not empty -> store password
-		if ( document.getElementById('host').value != '' &&
+		if (document.getElementById('host').value != '' &&
 			document.getElementById('user').value != '' &&
 			document.getElementById('password').value ) {
 			passwordManager.addLogin(loginInfo); 
 		}
 		// store (valid) folder settings
-		if (document.getElementById('localContactsFolder').value != null)
-			prefs.setCharPref('contactsLocalFolder', document.getElementById('localContactsFolder').value);
-		else
-			prefs.setCharPref('contactsLocalFolder', ''); 
-		if (document.getElementById('remoteContactsFolder').value != null)
-			prefs.setCharPref('contactsRemoteFolder', document.getElementById('remoteContactsFolder').value);
-		else {
-			prefs.setCharPref('contactsRemoteFolder', '');
-			config.folderSyncKey = 0;
-			config.folderIds = Array();
-			config.folderNames = Array();
-			config.folderTypes = Array();
-		} 
+
+		// get local addressbooks
+		var item, i, listbox, folderName, folderId, localAdressbook = {};
+		var abManager = Components.classes["@mozilla.org/abmanager;1"].getService(Components.interfaces.nsIAbManager);
+		var allAddressBooks = abManager.directories;
+		while (allAddressBooks.hasMoreElements()) {  
+			var addressBook = allAddressBooks.getNext();
+			if (addressBook instanceof Components.interfaces.nsIAbDirectory && 
+				!addressBook.isRemote && !addressBook.isMailList && addressBook.fileName != 'history.mab') {
+				localAdressbook[addressBook.dirName] = addressBook.URI;
+			}
+		}
+
+		// get remote folders
+		config.localContactsFolder = {}
+		listbox = document.getElementById('remoteContactsFolder');
+		for (i=0; i<listbox.itemCount; i++) {
+			item = listbox.getItemAtIndex(i);
+			folderName = item.label;
+			folderId = item.value;
+			if (item.selected) {
+				//helper.debugOut("selected item: folderName="+folderName+", folderId="+folderId+"\n");
+				if (config.contactsSyncKey[folderId]===undefined) {
+					config.contactsSyncKey[folderId] = 0;
+				}
+				if (localAdressbook[folderName]===undefined) {
+					helper.debugOut("local address book '"+folderName+"' is missing. Can't sync this folder.\n");
+					helper.prompt("Local address book '"+folderName+"' is missing. Can't sync this folder.\n\nPlease add the address book manually.");
+					delete config.contactsSyncKey[folderId];
+				} else {
+					// save sync relationship: folderID, URI
+					helper.debugOut("connect: folderName='"+folderName+"', folderId='"+folderId+"', URI='"+localAdressbook[folderName]+"'\n");
+					config.contactsFolder[folderId] = localAdressbook[folderName];
+				}
+			} else {
+				// no longer connected, remove metadata (if there is any)
+				helper.debugOut("disconnect: folderName='"+folderName+"', folderId='"+folderId+"', URI='"+localAdressbook[folderName]+"'\n");
+				delete config.contactsSyncKey[folderId];
+				delete config.contactsFolder[folderId];
+				if (folderName && localAdressbook[folderName]) {
+					delete config.managedCards[localAdressbook[folderName]];
+					ab.doClearExtraFields(localAdressbook[folderName]);
+				}
+			}
+		}
+		// save new settings
+		config.write();
 	}
 	// Windows cancel pressed -> remember old password and settings
 	else if (ok==false) {
@@ -121,37 +154,33 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			passwordManager.addLogin(loginInfo);
 			oldpwd = ''; // prevent saving password twice
 		}
-		// old settings
-		config = oldConfig;
+		// reload old settings
+		config.read();
 	}
-	config.write();
   }
 
   function localAbs() {
-	while (document.getElementById('localContactsFolder').children.length > 0)
-		document.getElementById('localContactsFolder').removeChild(document.getElementById('localContactsFolder').firstChild);
-	let abManager = Components.classes["@mozilla.org/abmanager;1"] 
-		.getService(Components.interfaces.nsIAbManager);
-	let allAddressBooks = abManager.directories;
+	var listbox = document.getElementById('localContactsFolder');
+	while (listbox.itemCount>0) {
+		listbox.removeItemAt(0);
+	}
+	var abManager = Components.classes["@mozilla.org/abmanager;1"].getService(Components.interfaces.nsIAbManager);
+	var allAddressBooks = abManager.directories;
 	while (allAddressBooks.hasMoreElements()) {  
-		let addressBook = allAddressBooks.getNext();
+		var addressBook = allAddressBooks.getNext();
 		if (addressBook instanceof Components.interfaces.nsIAbDirectory && 
 			!addressBook.isRemote && !addressBook.isMailList && addressBook.fileName != 'history.mab') {
-			var ab = document.createElement('listitem');
-			ab.setAttribute('label', addressBook.dirName);
-			ab.setAttribute('value', addressBook.URI); 
-			document.getElementById('localContactsFolder').appendChild(ab);
-			if (prefs.getCharPref('contactsLocalFolder') == addressBook.URI)
-				document.getElementById('localContactsFolder').selectedItem = ab;
+			listbox.appendItem(addressBook.dirName, addressBook.URI);
 		}
 	}
-	if(document.getElementById('localContactsFolder').selectedIndex < 0)
-		document.getElementById('localContactsFolder').selectedIndex = 0;
   }
 
+  // command handler
   function remoteFolders() { 
-	while (document.getElementById('remoteContactsFolder').children.length > 0)
+	helper.debugOut("remoteFolders()\n");
+	while (document.getElementById('remoteContactsFolder').children.length > 0) {
 		document.getElementById('remoteContactsFolder').removeChild(document.getElementById('remoteContactsFolder').firstChild);
+	}
 	config.url = (document.getElementById('hostSsl').checked ? 'https://' : 'http://') + 
 		document.getElementById('host').value + '/Microsoft-Server-ActiveSync';
 	config.deviceType = (document.getElementById('iPhone').checked? 'iPhone' : 'ThunderTine');
@@ -159,33 +188,40 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	config.pwd = document.getElementById('password').value;
 	config.deviceId = deviceId; 
 	config.folderSyncKey = 0;
-	if (config.minimumConfig())
+	if (config.minimumConfig()) {
 		sync.execute(Array('start', 'folderSync_Options', 'finish'));
+	}
   } 
 
   function remoteFoldersFinish() {
+	helper.debugOut("remoteFoldersFinish()\n");
 	var remoteIds = folder.listFolderIds('Contacts'); 
 	var remoteNames = folder.listFolderNames('Contacts'); 
+	var listbox = document.getElementById('remoteContactsFolder');
+	listbox.clearSelection();
 	for (var i = 0; i < remoteNames.length; i++) {
-		var ab = document.createElement('listitem');
-		ab.setAttribute('label', remoteNames[i]);
-		ab.setAttribute('value', remoteIds[i]); 
-		document.getElementById('remoteContactsFolder').appendChild(ab);
-		if (prefs.getCharPref('contactsRemoteFolder') == remoteIds[i])
-			document.getElementById('remoteContactsFolder').selectedItem = ab;
+		var ab = listbox.appendItem(remoteNames[i], remoteIds[i]);
+		if (config.contactsSyncKey[remoteIds[i]]!==undefined) {
+			listbox.ensureIndexIsVisible(listbox.getIndexOfItem(ab));
+		    listbox.addItemToSelection(ab);
+		}
 	}
-	if(document.getElementById('remoteContactsFolder').selectedIndex < 0)
-		document.getElementById('remoteContactsFolder').selectedIndex = 0;
+	listbox.focus();
   }
 
+  // command handler
   function newAb() {
 	window.openDialog("chrome://messenger/content/addressbook/abAddressBookNameDialog.xul", "", "chrome,modal=yes,resizable=no,centerscreen", null);
 	localAbs();
   }
 
+  // command handler
   function reInit() {
-	if (helper.ask(ttine.strings.getString('reinitializeFolder')))
-		ab.doClearExtraFields(document.getElementById('localContactsFolder').value);
+	if (helper.ask(ttine.strings.getString('reinitializeFolder'))) {
+		var listbox = document.getElementById('localContactsFolder')
+		helper.debugOut("options.reInit(): addressbook="+listbox.value+"\n");
+		ab.doClearExtraFields(listbox.value);
+	}
   }
 
 

@@ -31,6 +31,7 @@
 			This can lead to duplicates in non-empty books.">
 <!ENTITY ttine.prefwindowRemoteFolders "remote contact folders">
 <!ENTITY ttine.prefwindowRemoteRefresh "refresh folder list...">
+<!ENTITY ttine.prefwindowRemoteFoldersText "The selected remote folders will be synced with local address books of the same name.">
 
 <!ENTITY ttine.prefwindowAbout1 "This extension syncs Thunderbird's contacts against 
 	Tine 2.0 Groupware (http://www.tine20.org/) using ActiveSync protocol.

@@ -45,7 +45,7 @@ var errortxt = {
 	code13: "The Sync command request is not complete.",
 	code14: "Invalid <Wait> or <HeartbeatInterval> value.",
 	code15: "Invalid Sync command request.",
-	code16: "Retry - Resend the request.", 
+	code16: "Retry - Resend the request."
   }
 
-}
+};

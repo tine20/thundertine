@@ -1,0 +1,112 @@
+THUNDERTINE 0.3 (xx.xx.2011)      PRELIMINARY!
+----------------------------
+
+This Thundertine 0.3 version is an update of Thundertine 0.2 release from 16.01.2011. It adds
+some new features and has improvements under the hood. While the general program structure
+has not changed, internal data structures have been simplified by using JavaScript/JSON objects
+instead of DOM/XML. Synchronization of multiple address books is now supported.
+
+
+FUNCTIONAL CHANGES
+
+- Multiple contacts folders can be synced (the selected remote folders will be synced
+  with local address books with the same name. Local address books must be created manually!)
+  If a remote folder is deselected in the preferences dialog, all synchronisation
+  metadata will be deleted from the local addressbook.
+- All ActiveSync fields are synced. Fields which do not exist in Thunderbird are
+  encoded as special lines "{field:value}" at the beginning of the TB Notes field.
+  Note: These fields are ghosted, meaning if they are deleted at the client, they
+  will not automatically be deleted at the server.
+- ActiveSync fields which are encoded in the TB Notes are "ghosted", i.e. if missing
+  at the client, they will not be removed at the server.
+- Adapted ThunderTine sourcecode to work with Z-Push and Zarafa groupware
+
+TECHNICAL CHANGES
+
+- Use of native JavaScript datastructures instead of DOM.
+- Encode/decode WBXML messages from/to native JavaScript objects.
+- extensions.ttine.debug property. If true debug messages are written to the file
+  "debug.out" in the profile directory
+- Synchronization state is saved in the file "thundertine.json" in the profile directory
+- Version number changed to 0.3, TB version compatibility set to 3.0 .. 99
+
+
+Tested with Zarafa 7.0 and Thunderbird 3.1.11
+
+21.08.2011, mjb
+
+
+FIELD MAPPING
+
+ActiveSync                           Thunderbird 3.1
+---------------------------------    -------------------------------
+Contacts_Anniversary
+Contacts_AssistantName
+Contacts_AssistantTelephoneNumber
+Contacts_Birthday                    BirthDay, BirthMonth, BirthYear
+Contacts_Body                        Notes
+Contacts_Business2PhoneNumber
+Contacts_BusinessCity                WorkCity
+Contacts_BusinessCountry             WorkCountry
+Contacts_BusinessPostalCode          WorkZipCode
+Contacts_BusinessState               WorkState
+Contacts_BusinessStreet              WorkAddress, WorkAddress2
+Contacts_BusinessFaxNumber           FaxNumber
+Contacts_BusinessPhoneNumber         WorkPhone
+Contacts_CarPhoneNumber
+Contacts_Categories                  Custom4 (not synced back)
+Contacts_Category
+Contacts_Children                    Custom3 (not synced back)
+Contacts_Child
+Contacts_CompanyName                 Company
+Contacts_CompressedRTF
+Contacts_Department                  Department
+Contacts_Email1Address               PrimaryEmail
+Contacts_Email2Address               SecondEmail
+Contacts_Email3Address
+Contacts_FileAs                      DisplayName
+Contacts_FirstName                   FirstName
+Contacts_Home2PhoneNumber
+Contacts_HomeCity                    HomeCity
+Contacts_HomeCountry                 HomeCountry
+Contacts_HomePostalCode              HomeZipCode
+Contacts_HomeState                   HomeState
+Contacts_HomeStreet                  HomeAddress, HomeAddress2
+Contacts_HomeFaxNumber
+Contacts_HomePhoneNumber             HomePhone
+Contacts_JobTitle                    JobTitle
+Contacts_LastName                    LastName
+Contacts_MiddleName                  NickName
+Contacts_MobilePhoneNumber           CellularNumber
+Contacts_OfficeLocation              Custom1
+Contacts_OtherCity
+Contacts_OtherCountry
+Contacts_OtherPostalCode
+Contacts_OtherState
+Contacts_OtherStreet
+Contacts_PagerNumber                 PagerNumber
+Contacts_RadioPhoneNumber
+Contacts_Spouse
+Contacts_Suffix                      Custom2
+Contacts_Title
+Contacts_Webpage                     WebPage1
+Contacts_YomiCompanyName
+Contacts_YomiFirstName
+Contacts_YomiLastName
+Contacts_Picture                     PhotoType, PhotoURI
+Contacts_Alias
+Contacts_WeightedRank
+Contacts2_CustomerId
+Contacts2_GovernmentId
+Contacts2_IMAddress                 _AimScreenName
+Contacts2_IMAddress2
+Contacts2_IMAddress3
+Contacts2_ManagerName
+Contacts2_CompanyMainPhone
+Contacts2_AccountName
+Contacts2_NickName
+Contacts2_MMS
+
+-                                   PreferMailFormat       (not synced)
+-                                   AllowRemoteContent     (not synced)
+-                                   WebPage2               (not synced)

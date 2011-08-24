@@ -10,7 +10,7 @@
 	onload="onopen();"
 	ondialogaccept="onclose(true);"
 	onunload="onclose();"
-	ondialogcancel="onclose(false)">
+	ondialogcancel="onclose(false);">
 
   <prefpane id="paneThunderTineHost" label="&ttine.prefwindowToolbarHost;" image="chrome://ttine/skin/tine.png">
 	<preferences>
@@ -49,14 +49,12 @@
 
   <prefpane id="paneThunderTineContacts" label="&ttine.prefwindowToolbarContacts;" image="chrome://ttine/skin/contacts.png">
 	<preferences>
-		<preference id="contactsLocalFolderPref" name="extensions.ttine.contactsLocalFolder" type="string"/>
-		<preference id="contactsRemoteFolderPref" name="extensions.ttine.contactsRemoteFolder" type="string"/>
 		<preference id="iPhonePref" name="extensions.ttine.iPhone" type="bool"/>
 	</preferences>
 	<vbox>
 		<groupbox>
 			<caption label="&ttine.prefwindowLocalBooks;" />
-			<listbox id="localContactsFolder" rows="3" preference="contactsLocalFolderPref"></listbox>
+			<listbox id="localContactsFolder" rows="3"></listbox>
 			<hbox>
 				<button id="addLocalContactsFolder" label="&ttine.prefwindowAddNew;" oncommand="newAb();" />
 				<spacer flex="1" />
@@ -67,9 +65,11 @@
 		</groupbox>
 		<groupbox>
 			<caption label="&ttine.prefwindowRemoteFolders;" />
-			<listbox id="remoteContactsFolder" rows="3"></listbox>
+			<listbox id="remoteContactsFolder" rows="3" seltype="multiple"></listbox>
 			<checkbox id="iPhone" label="&ttine.prefwindowIPhone;" preference="iPhonePref" oncommand="remoteFolders();" hidden="true" />
 			<button id="remoteContactsFolderRefresh" label="&ttine.prefwindowRemoteRefresh;" oncommand="remoteFolders();" />
+			<label width="1" class="small-margin" crop="end">&ttine.prefwindowRemoteFoldersText;
+			 </label>
 		</groupbox>
 	</vbox>
   </prefpane>
@@ -89,7 +89,6 @@
 
   <script src="ab.js" type="application/x-javascript;version=1.7" />
   <script src="folder.js" type="application/x-javascript;version=1.7" />
-  <script src="ashttp.js" type="application/x-javascript;version=1.7" />
   <script src="helper.js" type="application/x-javascript;version=1.7" />
   <script src="wbxml.js" type="application/x-javascript;version=1.7" />
   <script src="config.js" type="application/x-javascript;version=1.7" />

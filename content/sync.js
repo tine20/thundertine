@@ -29,47 +29,71 @@ var sync = {
    * It keeps the order for asynchronous calls. Always return to dispatch!
    */
 
-  dispatcher: Array(), 
+  dispatcher: [],	// contains a sequence of commands to process
   dispGoTo: null, 
-  syncCollections: Array(),
+  
+  syncFolders: [],	// contains a list of remote folder IDs to be synced, when a folder has been processed it is removed from this list
 
+  // start a sequence of commands
   execute: function(dispatcher) {
 	// new command set is given
-	if (typeof dispatcher != 'undefined')
+	if (dispatcher) {
 		this.dispatcher = dispatcher;
+		this.dispGoTo = null;
+	}
+	// initialize this.syncFolders
+	this.syncFolders = [];
+	var id;
+	for (id in config.contactsSyncKey) {
+		this.syncFolders.push(id);
+	}
 
 	this.dispatch();
   },
 
   dispatch: function(req) { 
+
+    if (this.dispGoTo) {
+        helper.debugOut("<-- sync.dispatch(), this.dispGoTo="+this.dispGoTo+", this.dispatcher="+JSON.stringify(this.dispatcher)+
+		                ", this.syncFolders="+JSON.stringify(this.syncFolders)+", req="+req+"\n");
+	}
+
 	// just returned to here
 	switch (this.dispGoTo) {
 		case 'folderSync': 
-			if(!folder.updateFinish(req) || !folder.stillExists()) {
+			if (!req || !folder.updateFinish(req) || !folder.stillExists(this.syncFolders[0])) {
+				helper.debugOut("sync.dispatch(): folderSync failed -> set status = 12\n");
 				this.failed(12);
 				return false;
 			} 
-			this.dispatcher.splice(0,1);
+			this.dispatcher.splice(0, 1);
 			this.dispGoTo = null;
 			break;
 		case 'remoteFoldersFinish': 
-			if(typeof req != 'undefined')
-				if(folder.updateFinish(req))
+			if (req) {
+				if (folder.updateFinish(req)) {
 					remoteFoldersFinish();
-			this.dispatcher.splice(0,1);
+				}
+			}
+			this.dispatcher.splice(0, 1);
 			this.dispGoTo = null;
 			break;
 		case 'sync': 
 			var status = this.response(req);
-			if(status != 1 && status != 7) 
+			if (status != 1 && status != 7) {
 				this.failed(status);
+			}
 			this.dispGoTo = null;
 			break;
 	}
 
 	// empty dispatcher means nothing to do
-	if (this.dispatcher.length <= 0)
+	if (this.dispatcher.length <= 0) {
 		return null;
+	}
+
+    helper.debugOut("--> sync.dispatch(), this.dispGoTo="+this.dispGoTo+", this.dispatcher="+JSON.stringify(this.dispatcher)+
+	                ", this.syncFolders="+JSON.stringify(this.syncFolders)+", req="+req+"\n");
 
 	// go for next action
 	switch(this.dispatcher[0]) {
@@ -81,45 +105,29 @@ var sync = {
 			this.dispGoTo = 'remoteFoldersFinish';
 			folder.update();
 			break;
-		case "prepareContacts": 
-			if (ab.stillExists()) 
-				this.syncCollections.push('contacts');
-			this.dispatcher.splice(0,1);
-			this.dispatch();
-			break;
-		case "prepareCalendar":
-			this.syncCollections.push('calendar');
-			this.dispatcher.splice(0,1);
-			this.dispatch();
-			break;
-		case "prepareTasks":
-			this.syncCollections.push('tasks');
-			this.dispatcher.splice(0,1);
-			this.dispatch();
-			break;
 		case "sync": 
 			this.dispGoTo = 'sync';
-			this.dispatcher.splice(0,1);
-			if(this.request() == false) {
+			this.dispatcher.splice(0, 1);
+			if (this.request() == false) {
 				this.dispGoTo = null;
 				this.dispatch();
 			}
 			break;
 		case "start":
 			this.inProgress = true; 
-			if (typeof ttine.statusBar != 'undefined')
+			if (ttine.statusBar) {
 				ttine.statusBar('working');
-			this.dispatcher.splice(0,1);
-			this.syncCollections = Array();
+			}
+			this.dispatcher.splice(0, 1);
 			this.dispatch();
 			break;
 		case "finish":
 			this.inProgress = false; 
-			if (typeof ttine.statusBar != 'undefined') {
+			if (ttine.statusBar) {
 				ttine.statusBar();
 				ttine.timerId = window.setTimeout('ttine.sync();', config.interval);
 			}
-			this.dispatcher.splice(0,1);
+			this.dispatcher.splice(0, 1);
 			this.lastStatus = 1;
 			break;
 		default:
@@ -129,11 +137,12 @@ var sync = {
 
   failed: function (reason, txt) { 
 	// In asynchron mode die silently -> visible in statusbar
-	this.dispatcher = Array();
-	if (reason == 'http')
+	this.dispatcher = [];
+	if (reason == 'http') {
 		helper.prompt(ttine.strings.getString('connectionFailed')+"\n\n" + txt.statusText + "\n\n"+ttine.strings.getString('checkSettings'));
-	else
+	} else {
 		this.lastStatus = reason;
+	}
 	sync.inProgress = false;
 	ttine.initialized = false;
 	ttine.statusBar('error');
@@ -143,43 +152,38 @@ var sync = {
    * THE SYNC itself
    */
 
-  request: function() { 
-	var doc = document.implementation.createDocument("", "", null);
-	var dom = doc.createElement('Sync');
-	// collections
-	dom.appendChild(doc.createElement('Collections'));
+  request: function() {
+	var collections = [];
+	var req = ["Sync", ["Collections", collections]];
+
+	helper.debugOut("sync.request()\n");
 
 	/*
 	 * AT THE MOMENT THERE'S ONLY A CONTACTS COLLECTION
 	 */
 
-	if (this.syncCollections.indexOf('contacts') >= 0)
-		dom.lastChild.appendChild( this.createContactsCollection() );
+	collections.push('Collection', this.createContactsCollection());
 
-	if (this.syncCollections.indexOf('calendar') >= 0)
-		dom.lastChild.appendChild( this.createCalendasCollection() );
-
-	if (this.syncCollections.indexOf('tasks') >= 0)
-		dom.lastChild.appendChild( this.createTasksCollection() );
-
-	if (this.syncCollections.length > 0)
-		wbxml.httpRequest(dom); // asynchroneus -> ends up in this.dispatch()
-	else
-		return false; 
+	wbxml.httpRequest(req); // asynchroneus -> ends up in this.dispatch()
+	return true;
   }, 
 
 
   response: function(req) {  
-	var reqText = req.responseText; 
+	var reqText, obj, syncStatus, collection, i, status, syncKey;
+	
+	helper.debugOut("sync.response()\n");
+	
+	reqText = req.responseText;
 	// check if WbXML returned
 	if (reqText.substr(0,4) != String.fromCharCode(0x03,0x01,0x6A,0x00) && reqText != '') {
-		helper.prompt("The Server respones \n\n"+reqText);
+		helper.prompt("The Server response:\n\n"+reqText);
 		ttine.initialized = false;
 		this.inProgress = false;
 		ttine.statusBar();
 		return reqText;
 	}
-	else if (reqText == '') {
+	if (reqText == '') {
 		/*
 		 * Empty response indicates that there're no server side changes (for saving bandwidth). 
 		 * Client may request empty then. Not implemented right now. It seem's like Tine 2.0 
@@ -188,42 +192,77 @@ var sync = {
 		 */
 		return true; // empty response -> no changes / no syncKey change
 	}
-	else
-		var dom = wbxml.doXml(reqText);		
+	obj = wbxml.wbxml2obj(reqText);
+
+	// {"Sync":
+	//     {"Collections":
+	//         {"Collection": [
+	//             {"Class":        "Contacts",
+	//              "CollectionId": "xxx",
+	//              "Status":       "1",
+	//              "SyncKey":      "xxx",
+	//              "Commands":
+	//                 {"Add": [
+	//                     {"ServerId": "xxx",
+	//                      "ApplicationData": {...}
+	//                     },
+	//                     ...
+	//                 ]},
+	//              "Responses":
+	//                 {"Add": [
+	//                     {"ClientId": "xxx",
+	//                      "ServerId": "xxx",
+	//                      "Status":   "1"
+	//                     },
+	//                     ...
+	//                 ]},
+	//             },
+	//             ...
+	//         ]}
+	//     }
+	// }
 
 	// Sync Status (this one is different to Collection Status and only defined if no Collection stati are present!)
-	if(typeof helper.doEvaluateXPath(dom, "/Sync/Status")[0] == 'undefined')
-		var syncStatus = 1;
-	else
-		var syncStatus = helper.doEvaluateXPath(dom, "/Sync/Status")[0].firstChild.nodeValue;
+	syncStatus = obj.Sync.Status || 1;
 
-	if (syncStatus == 1) { 
+	if (syncStatus == 1 && obj.Sync.Collections && obj.Sync.Collections.Collection) { 
 		/*
 		 * At the Moment only contacts folder is synced. 
 		 */
 
-		var contactsColl = helper.doEvaluateXPath(dom, "/Sync/Collections/Collection[CollectionId='"+config.contactsRemoteFolder+"']");
+		collection = obj.Sync.Collections.Collection;
+		for (i = 0; i < collection.length; i++) {
+		
+			var collectionId = collection[i].CollectionId;
+		
+			if (config.contactsSyncKey[collectionId]!==undefined) {
+				// process the collection
 
-		var status = helper.doEvaluateXPath(contactsColl[0], "//Status");
-		if (status[0].firstChild.nodeValue == 7)
-			this.lastStatus = 7;
-		else if (status[0].firstChild.nodeValue != 1) {
-			return status[0].firstChild.nodeValue;
-		} 
+				status = collection[i].Status;
+				
+				if (status == 7) {
+					this.lastStatus = 7;
+				} else if (status != 1) {
+					return status;				// TODO
+				}
 
-		var syncKey = helper.doEvaluateXPath(contactsColl[0], "//SyncKey");
-		if(typeof syncKey[0].firstChild.nodeValue != 'undefined')
-			config.contactsSyncKey = syncKey[0].firstChild.nodeValue;
+				try {				
+					this.applyContactsCollection(config.contactsFolder[collectionId], collection[i].Responses||null, collection[i].Commands||null);
+				} catch (err) {
+					helper.debugOut("  synchronization of folderId '"+collectionId+"' failed. Exception: "+err+"\n");
+					return status;              // TODO
+				}
 
-		this.applyContactsCollection(
-			helper.doEvaluateXPath(dom, "/Sync/Collections/Collection[CollectionId='"+config.contactsRemoteFolder+"']/Responses"),
-			helper.doEvaluateXPath(dom, "/Sync/Collections/Collection[CollectionId='"+config.contactsRemoteFolder+"']/Commands")
-		);
+				helper.debugOut("  synchronization of folderId '"+collectionId+"' has completed successfully.\n");
 
-		/*
-		 * MISSING: Apply new calendar and task entries
-		 */
-
+				syncKey = collection[i].SyncKey;
+				helper.debugOut("  received SyncKey: "+syncKey+"  (must be used in next request)\n");
+				if (syncKey) {
+					config.contactsSyncKey[collectionId] = syncKey;	// save SyncKey
+				}
+			}
+		}
+		
 		/*
 		 * After successfull sync save! (e.g. for Id in xml)
 		 */
@@ -235,130 +274,161 @@ var sync = {
   },
 
   createContactsCollection: function() {
-	var doc = document.implementation.createDocument("", "", null);
-	// collections -> Collection
-	var dom = doc.createElement('Collection');
+	var col = [];
 
 	// collections -> Collection -> Class
-	dom.appendChild(doc.createElement('Class'));
-		dom.lastChild.appendChild(doc.createTextNode('Contacts'));
+	col.push('Class', 'Contacts');
+	
+	// get the CollectionId and SyncKey of the current folder
+	var collectionId = this.syncFolders[0];
+	var contactsSyncKey = config.contactsSyncKey[collectionId];
+	var contactsLocalFolder = config.contactsFolder[collectionId];
+	helper.debugOut("sync.createContactsCollection(): collectionId='"+collectionId+"', SyncKey='"+contactsSyncKey+"'\n");
 
+	// make sure config.managedCards[] exists
+	if (config.managedCards[contactsLocalFolder]===undefined) {
+		config.managedCards[contactsLocalFolder] = [];
+	}
+	
 	// collections -> Collection -> SyncKey
-	dom.appendChild(doc.createElement('SyncKey')); 
-		dom.lastChild.appendChild(doc.createTextNode(config.contactsSyncKey));
+	col.push('SyncKey', contactsSyncKey);
 
 	// collections -> Collection -> CollectionId
-	dom.appendChild(doc.createElement('CollectionId'));
-		dom.lastChild.appendChild(doc.createTextNode(config.contactsRemoteFolder));
+	col.push('CollectionId', collectionId);
 
-	if (config.contactsSyncKey == 0) { 
+	if (contactsSyncKey == 0) { 
 		// collections -> Collection -> Supported
-		dom.appendChild( ab.supportedDom() );
+		col.push('Supported', ab.asSupported());
 		// collections -> Collection -> Options
-		dom.appendChild(doc.createElement('Options')); dom.appendChild(doc.createElement('GetChanges'));
-		dom.lastChild.appendChild(doc.createElement('Class'));
-			dom.lastChild.lastChild.appendChild(doc.createTextNode('Contacts')); 
+		//col.push('GetChanges', null);
+		//col.push('Options', ['Class', 'Contacts']);
 		// queue next request (get entries with key of 1)
-		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'prepareContacts', 'sync');
+		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'sync');
 	}
 	else if (config.contactsSyncKey == 1) {
 		/*
 		 * Bug or feature? If syncKey = 1 then giving commands results to a Tine 2.0 exception.
 		 */
 		// collections -> Collection -> GetChanges?
-		dom.appendChild(doc.createElement('GetChanges'));
+		col.push('GetChanges', null);
 		// queue next request (send local entries with key of 2)
-		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'prepareContacts', 'sync');
+		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'sync');
 	}
 	else { 
 		// collections -> Collection -> GetChanges?
-		dom.appendChild(doc.createElement('GetChanges'));
+		col.push('GetChanges', null);
 		// collections -> Collection -> Commands
-		var commands = ab.commandsDom(); 
+		var commands = ab.commandsDom(contactsLocalFolder); 
 		if (commands != null) { //  && config.contactsSyncKey > 1
-			dom.appendChild( doc.createElement('Commands') );
-			for(var i = 0; i<commands.length; i++)
-				dom.lastChild.appendChild(commands[i]);
-		} 
-	}
-	return dom;
-  }, 
+			col.push('Commands', commands);
+		}
 
-  createCalendarCollection: function() {
-	/*
-	 * MISSING: calendar and tasks
-	 */
-  },
-
-  createTasksCollection: function() {
-	/*
-	 * MISSING: calendar and tasks
-	 */
-  }, 
-
-  applyContactsCollection: function(responses, commands) {
-	// process server response
-	if (responses.length > 0 && responses[0].children.length > 0) {
-
-		for (var r = 0; r < responses[0].children.length; r++) {
-			var cardDom = responses[0].children[r]; 
-			var cStatus = -1; var cServerId = null; var cClientId = null;
-			for (var c = 0; c < cardDom.children.length; c++) {
-				if (cardDom.children[c].nodeName == 'Status')
-					cStatus = cardDom.children[c].firstChild.nodeValue;
-				else if (cardDom.children[c].nodeName == 'ServerId')
-					cServerId = cardDom.children[c].firstChild.nodeValue;
-				else if (cardDom.children[c].nodeName == 'ClientId')
-					cClientId = cardDom.children[c].firstChild.nodeValue;
-			}
-
-			if (cStatus != 1) {
-				helper.prompt("Syncing failed. The server responded: \n" + errortxt.sync['code'+cStatus]);
-				continue;
-			} 
-
-			if (cardDom.nodeName == 'Add') 
-				ab.responseCard(cClientId, Array("TineSyncId", 'TineSyncMD5'), Array(cServerId, '') ); 
-			else if (cardDom.nodeName == 'Change')
-				ab.responseCard(cServerId, Array('TineSyncMD5'), Array('') );
+		// remove this folder from the list
+		this.syncFolders.splice(0, 1);
+		if (this.syncFolders.length>0) {
+			// if there are still folders to do then queue next request
+			this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'sync');
 		}
 	}
+	return col;
+  }, 
+
+  applyContactsCollection: function(contactsLocalFolder, responses, commands) {
+	// responses = {"Add": [
+	//                 {"Status":   "1",
+	//                  "ServerId": "xxx",
+	//                  "ClientId": "xxx",
+	//                  "Class":    "xxx"
+	//                 },
+	//                 ...
+	//              ],
+	//              "Change": [
+	//                 {"Status":   "1",
+	//                  "ServerId": "xxx",
+	//                  "Class":    "xxx"
+	//                 },
+	//                 ...
+	//              ],
+	//              "Fetch":
+	//                 {"Status":   "1",
+	//                  "ServerId": "xxx",
+	//                  "ApplicationData" : {..}
+	//                 }
+	//             }
+
+	var i, entry;
+
+	// process server response
+	if (responses && responses.Add) {
+		for (i = 0; i < responses.Add.length; i++) {
+			entry = responses.Add[i];
+			if (entry.Status == 1) {
+				ab.responseCard(contactsLocalFolder, entry.ClientId, ["TineSyncId", 'TineSyncMD5'], [entry.ServerId, ''] ); 
+			} else {
+				helper.prompt("Syncing failed. The server responded: \n" + errortxt.sync['code'+entry.Status]);
+			}
+		}
+	}
+
+	if (responses && responses.Change) {
+		for (i = 0; i < responses.Change.length; i++) {
+			entry = responses.Change[i];
+			if (entry.Status == 1) {
+				ab.responseCard(contactsLocalFolder, entry.ServerId, ['TineSyncMD5'], [''] ); 
+			} else {
+				helper.prompt("Syncing failed. The server responded: \n" + errortxt.sync['code'+entry.Status]);
+			}
+		}
+	}
+
+	// commands  = {"Add": [
+	//                 {"ServerId": "xxx",
+	//                  "ApplicationData" : {..}
+	//                 },
+	//                 ...
+	//              ],
+	//              "Change": [
+	//                 {"ServerId": "xxx",
+	//                  "Class":    "xxx",
+	//                  "ApplicationData" : {..}
+	//                 },
+	//                 ...
+	//              ],
+	//              "Delete": [
+	//                 {"ServerId": "xxx",
+	//                  "Class":    "xxx"
+	//                 },
+	//                 ...
+	//              ],
+	//              "SoftDelete": [
+	//                 {"ServerId": "xxx"},
+	//                 ...
+	//              ],
+	//             }
 
 	// process server commands
-	if (commands.length > 0 && commands[0].children.length > 0) {
-		for (var r = 0; r < commands[0].children.length; r++) {
-			var cardDom = commands[0].children[r]; 
-			var cServerId = null; var cAppData = null;	
-			for (var c = 0; c < cardDom.children.length; c++) {
-				if (cardDom.children[c].nodeName == 'ServerId')
-					cServerId = cardDom.children[c].firstChild.nodeValue;
-				else if (cardDom.children[c].nodeName == 'ApplicationData')
-					cAppData = cardDom.children[c];
-			}	
-
-			if (cardDom.nodeName == 'Add' || cardDom.nodeName == 'Change' || cardDom.nodeName == 'Delete') {
-				ab.commandCard(cardDom.nodeName, cServerId, cAppData); 
-			}
-
+	if (commands && commands.Add) {
+		for (i = 0; i < commands.Add.length; i++) {
+			entry = commands.Add[i];
+			ab.commandCard(contactsLocalFolder, "Add", entry.ServerId, entry.ApplicationData);
 		}
-
 	}
-
+	if (commands && commands.Change) {
+		for (i = 0; i < commands.Change.length; i++) {
+			entry = commands.Change[i];
+			ab.commandCard(contactsLocalFolder, "Change", entry.ServerId, entry.ApplicationData);
+		}
+	}
+	if (commands && commands.Delete) {
+		for (i = 0; i < commands.Delete.length; i++) {
+			entry = commands.Delete[i];
+			ab.commandCard(contactsLocalFolder, "Delete", entry.ServerId, null);
+		}
+	}
+	
 	// keep track of cards for deleting
-	ab.managedCards();
-  }, 
-
-  applyCalendarCollection: function(dom) {
-	/*
-	 * MISSING: calendar and tasks
-	 */
-  }, 
-
-  applyTasksCollection: function(dom) {
-	/*
-	 * MISSING: calendar and tasks
-	 */
+	ab.managedCards(contactsLocalFolder);
   }
 
-}
+};
 

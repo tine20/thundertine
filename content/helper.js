@@ -20,68 +20,38 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 var helper = {
 
-  doEvaluateXPath: function (aNode, aExpr) {  
-	var xpe = new XPathEvaluator(); 
-	try { 
-		var nsResolver = xpe.createNSResolver(aNode.ownerDocument == null ?  
-		aNode.documentElement : aNode.ownerDocument.documentElement);  
-		var result = xpe.evaluate(aExpr, aNode, nsResolver, 0, null);  
-		var found = [];  
-		var res;  
-		while (res = result.iterateNext())  
-			found.push(res);  
-		return found;  
-	}
-	catch (err) {
-		helper.prompt("DOM Error \n\n" + err);
-	}
+  writefile: function(filename, data) {
+    var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
+        .createInstance(Components.interfaces.nsIFileOutputStream);
+    var file = Components.classes["@mozilla.org/file/directory_service;1"]
+        .getService(Components.interfaces.nsIProperties)
+        .get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
+    file.append(filename); // set file name
+    foStream.init(file, 0x02 | 0x08 | 0x20, 0664, 0);   // write, create, truncate
+    foStream.write(data, data.length);
+    foStream.close();
   },
 
-  domStr: function(dom) {
-	var serializer = new XMLSerializer();
-	var retStr = serializer.serializeToString(dom);
-	return retStr;
-  },
-
-  dom2file: function(filename, dom) {
-	var serializer = new XMLSerializer();
-	var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
-		.createInstance(Components.interfaces.nsIFileOutputStream);
-	var file = Components.classes["@mozilla.org/file/directory_service;1"]
-		.getService(Components.interfaces.nsIProperties)
-		.get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
-	file.append(filename); // set file name
-	foStream.init(file, 0x02 | 0x08 | 0x20, 0664, 0);   // write, create, truncate
-		serializer.serializeToStream(dom, foStream, "");
-	foStream.close();
-  },
-
-  file2dom: function(filename) {
-	var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"]
-		.createInstance(Components.interfaces.nsIFileInputStream); 
-	 var cstream = Components.classes["@mozilla.org/intl/converter-input-stream;1"]  
-		.createInstance(Components.interfaces.nsIConverterInputStream);
-	var file = Components.classes["@mozilla.org/file/directory_service;1"]
-		.getService(Components.interfaces.nsIProperties)
-		.get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
-	try {
-		file.append(filename); // set file name
-		fstream.init(file, 0x01, 0444, 0);
-		cstream.init(fstream, "UTF-8", 0, 0);
-		var data;
-		let (str = {}) {  
-			cstream.readString(-1, str); // read the whole file and put it in str.value  
-			data = str.value;  
-		}  
-		cstream.close();
-		fstream.close();
-	}
-	catch(e) {
-		return false;
-	}
-	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-		.createInstance(Components.interfaces.nsIDOMParser); 
-	return parser.parseFromString(data, "text/xml"); 
+  readfile: function(filename) {
+    var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"]
+        .createInstance(Components.interfaces.nsIFileInputStream); 
+	var bstream = Components.classes["@mozilla.org/binaryinputstream;1"]
+	    .createInstance(Components.interfaces.nsIBinaryInputStream);
+    var file = Components.classes["@mozilla.org/file/directory_service;1"]
+        .getService(Components.interfaces.nsIProperties)
+        .get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
+    var data;
+    try {
+        file.append(filename); // set file name
+        fstream.init(file, 0x01, 0444, 0);
+		bstream.setInputStream(fstream);
+		data = bstream.readBytes(bstream.available());
+        fstream.close();
+    }
+    catch(e) {
+        return false;
+    }
+    return data; 
   }, 
 
   prompt: function(txt) {
@@ -105,56 +75,42 @@ var helper = {
    * They have no functional sense.
    */
 
-  debugDom: function(dom) {
-	if (dom == null) 
-		alert('Dom is empty!');
-	else {
-		var serializer = new XMLSerializer();
-		try {
-			var pretty = serializer.serializeToString(dom);
-		}
-		catch (err) {
-			var pretty = "This is not a DOM structure!\n\n"+err;
-		}
-		alert(pretty); 
-	}
-  },
-
   debugOut: function(data) {
-	var file = Components.classes["@mozilla.org/file/directory_service;1"]
-		.getService(Components.interfaces.nsIProperties)
-		.get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
-	file.append('debug.out');
-	var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
-		.createInstance(Components.interfaces.nsIFileOutputStream);
-	foStream.init(file, 0x02 | 0x08 | 0x20, 0664, 0);   // write, create, truncate
+    if (config.debug) {
+		var file = Components.classes["@mozilla.org/file/directory_service;1"]
+			.getService(Components.interfaces.nsIProperties)
+			.get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
+		file.append('debug.out');
+		var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
+			.createInstance(Components.interfaces.nsIFileOutputStream);
+		foStream.init(file, 0x02 | 0x08 | 0x10, 0664, 0);   // write, create, append
 		foStream.write(data, data.length);
-	foStream.close();
+		foStream.close();
+	}
   },
 
-  showExtraFields: function() {
-	var res = '';
+  showExtraFields: function(contactsLocalFolder) {
+    var res = '';
 
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
-	
-	let addressBook = abManager.getDirectory(config.contactsLocalFolder);
-	let cards = addressBook.childCards;
-	while (cards.hasMoreElements()) { 
-		let card = cards.getNext();
-		if (card instanceof Components.interfaces.nsIAbCard) { 
-			res = res + card.getProperty("DisplayName", "")+"\n";
-			res = res + card.getProperty("TineSyncId", "")+"\n";
-			res = res + card.getProperty("TineSyncMD5", "")+"\n";
-			res = res + card.getProperty("PhotoURI", "")+"\n";
-			res = res + card.getProperty("PhotoType", "")+"\n";
-			res = res + card.getProperty("PhotoName", "")+"\n";
-			res = res + "==============================================\n";
-		}
-	}
+    var abManager = Components.classes["@mozilla.org/abmanager;1"].getService(Components.interfaces.nsIAbManager);
+    
+    var addressBook = abManager.getDirectory(contactsLocalFolder);
+    var cards = addressBook.childCards;
+    while (cards.hasMoreElements()) { 
+        var card = cards.getNext();
+        if (card instanceof Components.interfaces.nsIAbCard) { 
+            res = res + card.getProperty("DisplayName", "")+"\n";
+            res = res + card.getProperty("TineSyncId", "")+"\n";
+            res = res + card.getProperty("TineSyncMD5", "")+"\n";
+            res = res + card.getProperty("PhotoURI", "")+"\n";
+            res = res + card.getProperty("PhotoType", "")+"\n";
+            res = res + card.getProperty("PhotoName", "")+"\n";
+            res = res + "==============================================\n";
+        }
+    }
 
-	alert(res);
+    alert(res);
   }
 
-}
+};
 

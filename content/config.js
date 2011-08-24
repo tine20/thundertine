@@ -24,58 +24,66 @@ var config = {
   user: '',
   pwd: '',
 
-  contactsSyncKey: 0,
-  contactsLocalFolder: null,
-  contactsRemoteFolder: null, 
+  // remote folder Id -> SyncKey of folders to be synced
+  contactsSyncKey: {},
 
+  // remote folders  
   folderSyncKey: 0, 
-  folderIds: Array(), 
-  folderNames: Array(), 
-  folderTypes: Array(),
+  folderIds: [], 
+  folderNames: [], 
+  folderTypes: [],
+
+  // remote folder Id -> local addressbook URI
+  contactsFolder: {},
 
   picDir: 'Photos', 
 
-  // Array with TineSyncId of contacts to track deleted cards
-  managedCards: Array(),
+  // local addressbook URI -> Arrays with TineSyncId of contacts to track deleted cards
+  managedCards: {},
+  
+  // debug flag
+  debug: false,
 
   write: function() {
 	/*
 	 * all preferences which are not subject to change with every sync are in   
 	 * the thunderbird preferences and can only be edited within options dialog
 	 */
-	var doc = document.implementation.createDocument("", "", null);
-	var config = doc.createElement("config");
-	// normal keys
-	var keys = new Array('contactsSyncKey', 'folderSyncKey');
-	for(var i in keys) { 
-		var dom = doc.createElement(keys[i]);
-			var domtext = doc.createTextNode( this[keys[i]] );
-			dom.appendChild(domtext);
-		config.appendChild(dom);
-	}
-	// array folders
-	var folders = doc.createElement('folders');
-	for (var i=0; i<this.folderIds.length; i++) {
-		folders.appendChild( doc.createElement('folder') );
-		folders.lastChild.appendChild( doc.createElement('id') );
-		folders.lastChild.lastChild.appendChild( doc.createTextNode(this.folderIds[i]) );
-		folders.lastChild.appendChild( doc.createElement('name') );
-		folders.lastChild.lastChild.appendChild( doc.createTextNode(this.folderNames[i]) );
-		folders.lastChild.appendChild( doc.createElement('type') );
-		folders.lastChild.lastChild.appendChild( doc.createTextNode(this.folderTypes[i]) );
-	}
-	config.appendChild( folders );
-	// managedCards
-	var dom = doc.createElement('managedCards');
-		var domtext = '';
-	for (i in this.managedCards)
-		domtext = domtext + this.managedCards[i]+',';
-	domtext = domtext.substr(0, domtext.length-1);
-	dom.appendChild( doc.createTextNode(domtext) );
-	config.appendChild(dom);
+	 
+    /* State saved in <profiledir>/thundertine.json file:
+     *
+     * {"contactsSyncKey": {RemoteFolderId: ContactsSyncKey,
+     *                      RemoteFolderId: ContactsSyncKey,
+     *                      ...
+     *                     },
+     *  "folderSyncKey":   FolderSyncKey,
+     *  "folderIds":       [RemoteFolderId, RemoteFolderId, ...],
+     *  "folderNames":     [RemoteFolderName, RemoteFolderName, ...],
+     *  "folderTypes":     [RemoteFolderType, RemoteFolderType, ...],
+     *  "contactsFolder":  {RemoteFolderId: localAddressBookURI,
+     *                      RemoteFolderId: localAddressBookURI,
+     *                      ...
+     *                     },
+     *  "managedCards":    {localAddressBookURI: [TineSyncId, TineSyncId, ...],
+     *                      localAddressBookURI: [TineSyncId, TineSyncId, ...],
+     *                      ...
+     *                     }
+     * }
+	 */
 
-	doc.appendChild(config); 
-	helper.dom2file("thundertine.xml", doc);
+	var doc = {
+		'contactsSyncKey': this.contactsSyncKey,
+		'folderSyncKey':   this.folderSyncKey,
+		'folderIds':       this.folderIds,
+		'folderNames' :    this.folderNames,
+		'folderTypes' :    this.folderTypes,
+		'contactsFolder':  this.contactsFolder,
+		'managedCards':    this.managedCards
+	};
+	//helper.debugOut("config.write(): "+JSON.stringify(doc)+"\n");
+	helper.debugOut("config.write()\n");
+
+	helper.writefile("thundertine.json", JSON.stringify(doc));
   }, 
 
   read: function() { 
@@ -96,17 +104,18 @@ var config = {
 	config.interval = prefs.getIntPref("syncInterval") * 60 * 1000; // in milliseconds
 	config.syncBeforeClose = prefs.getBoolPref('syncBeforeClose');
 	config.checkFolderBefore = prefs.getBoolPref('checkFolderBefore');
-	config.contactsLocalFolder = prefs.getCharPref("contactsLocalFolder");
-	config.contactsRemoteFolder = prefs.getCharPref("contactsRemoteFolder");
+	//config.contactsLocalFolder = prefs.getCharPref("contactsLocalFolder");
+	//config.contactsRemoteFolder = prefs.getCharPref("contactsRemoteFolder");
 	config.contactsLimitPictureSize = prefs.getBoolPref("contactsLimitPictureSize");
-        config.fullSilence = prefs.getBoolPref("fullSilence");
+    config.fullSilence = prefs.getBoolPref("fullSilence");
+    config.debug = prefs.getBoolPref("debug");
 	// get password
 	var passwordManager = Components.classes["@mozilla.org/login-manager;1"]
 		.getService(Components.interfaces.nsILoginManager);
 	var username = config.user = prefs.getCharPref("user");
 	if ( prefs.getCharPref('host') != '' && username != '') {
-		var logins = passwordManager.findLogins({}, config.url, null, 'Tine 2.0 Active Sync');  
-		for (var i = 0; i < logins.length; i++) { 
+		var i, logins = passwordManager.findLogins({}, config.url, null, 'Tine 2.0 Active Sync');  
+		for (i = 0; i < logins.length; i++) { 
 			if (logins[i].username == username) {
 				config.pwd = logins[i].password;
 			    this.initialized = true;
@@ -116,42 +125,26 @@ var config = {
 	}
 
 	// data in file
-	var doc = helper.file2dom("thundertine.xml");
-	if(doc==false) 
+	var doc, data = helper.readfile("thundertine.json");
+	if (!data) {
 		return false;
-
-	for (var i=0; i<doc.firstChild.children.length; i++) {
-		if (doc.firstChild.children[i].nodeName == 'folders') {
-			if(doc.firstChild.children[i].children.length > 0) {
-				this.folderIds = Array();
-				this.folderNames = Array();
-				this.folderTypes = Array();
-				for (var a=0; a<doc.firstChild.children[i].children.length; a++) {
-					var folder = doc.firstChild.children[i].children[a];
-						for (var f=0; f<folder.children.length; f++) {
-							var tag = folder.children[f].nodeName;
-							var value = folder.children[f].firstChild.nodeValue;
-							if (tag == 'id')
-								this.folderIds.push(value);
-							else if (tag == 'name')
-								this.folderNames.push(value);
-							else if (tag == 'type')
-								this.folderTypes.push(value);
-						}
-				}
-			}
-		}
-		else if (doc.firstChild.children[i].nodeName == 'managedCards') {
-			if(doc.firstChild.children[i].firstChild != null)
-				this['managedCards'] = doc.firstChild.children[i].firstChild.nodeValue.split(',');
-			else 
-				this['managedCards'] = Array();
-		}
-		else if (doc.firstChild.children[i].firstChild != null)
-			this[doc.firstChild.children[i].nodeName] = doc.firstChild.children[i].firstChild.nodeValue;
-			
 	}
+	try {
+		doc = JSON.parse(data);
+	} catch(e) {
+		return false;
+	}
+	//helper.debugOut("config.read(): "+JSON.stringify(doc)+"\n");
+	helper.debugOut("config.read()\n");
 
+	this.contactsSyncKey = doc.contactsSyncKey;
+	this.folderSyncKey   = doc.folderSyncKey;
+	this.folderIds       = doc.folderIds;
+	this.folderNames     = doc.folderNames;
+	this.folderTypes     = doc.folderTypes;
+	this.contactsFolder  = doc.contactsFolder;
+	this.managedCards    = doc.managedCards;
+	
 	// make sure there is a folder for Photos
 	var dir = Components.classes["@mozilla.org/file/directory_service;1"]
 		.getService(Components.interfaces.nsIProperties)
@@ -160,32 +153,10 @@ var config = {
 	if( !dir.exists() || !dir.isDirectory() ) {   // if it doesn't exist, create
 		dir.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 0755);
 	}
-
-
-	// make sure all important things are known
-	var ab = parent.ab.listAbs();
-	if (
-		this.folderIds.indexOf(this.contactsRemoteFolder) >= 0 &&
-		ab.indexOf(config.contactsLocalFolder) >= 0 &&
-		config.user != '' &&
-		config.deviceId != '' &&
-		config.contactsLocalFolder != '' &&
-		config.contactsRemoteFolder != ''
-		
-	)
-		return true;
-	else
-		return false;
   }, 
 
   minimumConfig: function() {
-	if (config.url != '' &&
-		config.user != '' &&
-		config.contactsLocalFolder != '' &&
-		config.contactsRemoteFolder != '')
-		return true;
-	else
-		return false;
+	return config.url != '' && config.user != '';
   }
 
-}
+};

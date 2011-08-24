@@ -10,6 +10,7 @@ pref("extensions.ttine.checkFolderBefore", false);
 pref("extensions.ttine.contactsLimitPictureSize", true);
 pref("extensions.ttine.iPhone", false);
 pref("extensions.ttine.fullSilence", false);
+pref("extensions.ttine.debug", false);
 
 // for installation
 pref("extensions.thundertine@santa.noel.description", "chrome://ttine/locale/ttine.properties");

@@ -24,348 +24,311 @@ var wbxml = {
    * THIS TAGS ARE HIGHLY SPECIFIC FOR MS-ActiveSync. THEY'RE NOT USABLE FOR wbxml STANDARD IN GENERAL!!
    */
 
-  codePages: Array(
-	'AirSync', 'Contacts', 'Email', 'AirNotify', 'Calendar', 'Move', 'ItemEstimate', 'FolderHierarchy',
-	'MeetingResponse', 'Tasks', 'ResolveRecipients', 'ValidateCert', 'Contacts2', 'Ping', 'Provision', 'Search',
-	'Gal', 'AirSyncBase', 'Settings', 'DocumentLibrary', 'ItemOperations', 'ComposeMail', 'Email2', 'Notes'
-  ),
+  // {tagname: 0x<codepage><token>}
+  tags: {
+	// AirSync (codepage 0x00)
+	'Sync':                              0x0005,
+	'Responses':                         0x0006,
+	'Add':                               0x0007,
+	'Change':                            0x0008,
+	'Delete':                            0x0009,
+	'Fetch':                             0x000A,
+	'SyncKey':                           0x000B,
+	'ClientId':                          0x000C,
+	'ServerId':                          0x000D,
+	'Status':                            0x000E,
+	'Collection':                        0x000F,
+	'Class':                             0x0010,
+	'Version':                           0x0011,
+	'CollectionId':                      0x0012,
+	'GetChanges':                        0x0013,
+	'MoreAvailable':                     0x0014,
+	'WindowSize':                        0x0015,
+	'Commands':                          0x0016,
+	'Options':                           0x0017,
+	'FilterType':                        0x0018,
+	'Truncation':                        0x0019,
+	'RTFTruncation':                     0x001A,
+	'Conflict':                          0x001B,
+	'Collections':                       0x001C,
+	'ApplicationData':                   0x001D,
+	'DeletesAsMoves':                    0x001E,
+	'NotifyGUID':                        0x001F,
+	'Supported':                         0x0020,
+	'SoftDelete':                        0x0021,
+	'MIMESupport':                       0x0022,
+	'MIMETruncation':                    0x0023,
+	'Wait':                              0x0024,
+	'Limit':                             0x0025,
+	'Partial':                           0x0026,
+	'ConversationMode':                  0x0027,
+	'MaxItems':                          0x0028,
+	'HeartbeatInterval':                 0x0029,
 
-  tags: Array(
-	'Sync',
-	'Responses',
-	'Add',
-	'Change',
-	'Delete',
-	'Fetch',
-	'SyncKey',
-	'ClientId',
-	'ServerId',
-	'Status',
-	'Collection',
-	'Class',
-	'Version',
-	'CollectionId',
-	'GetChanges',
-	'MoreAvailable',
-	'WindowSize',
-	'Commands',
-	'Options',
-	'FilterType',
-	'Truncation',
-	'RTFTruncation',
-	'Conflict',
-	'Collections',
-	'ApplicationData',
-	'DeletesAsMoves',
-	'NotifyGUID',
-	'Supported',
-	'SoftDelete',
-	'MIMESupport',
-	'MIMETruncation',
-	'Wait',
-	'Limit',
-	'Partial',
-	'ConversationMode',
-	'MaxItems',
-	'HeartbeatInterval', 
-	'Contacts_Anniversary',
-	'Contacts_AssistantName',
-	'Contacts_AssistantTelephoneNumber',
-	'Contacts_Birthday',
-	'Contacts_Business2PhoneNumber',
-	'Contacts_BusinessCity',
-	'Contacts_BusinessCountry',
-	'Contacts_BusinessPostalCode',
-	'Contacts_BusinessState',
-	'Contacts_BusinessStreet',
-	'Contacts_BusinessFaxNumber',
-	'Contacts_BusinessPhoneNumber',
-	'Contacts_CarPhoneNumber',
-	'Contacts_Categories',
-	'Contacts_Category',
-	'Contacts_Children',
-	'Contacts_Child',
-	'Contacts_CompanyName',
-	'Contacts_Department',
-	'Contacts_Email1Address',
-	'Contacts_Email2Address',
-	'Contacts_Email3Address',
-	'Contacts_FileAs',
-	'Contacts_FirstName',
-	'Contacts_Home2PhoneNumber',
-	'Contacts_HomeCity',
-	'Contacts_HomeCountry',
-	'Contacts_HomePostalCode',
-	'Contacts_HomeState',
-	'Contacts_HomeStreet',
-	'Contacts_HomeFaxNumber',
-	'Contacts_HomePhoneNumber',
-	'Contacts_JobTitle',
-	'Contacts_LastName',
-	'Contacts_MiddleName',
-	'Contacts_MobilePhoneNumber',
-	'Contacts_OfficeLocation',
-	'Contacts_OtherCity',
-	'Contacts_OtherCountry',
-	'Contacts_OtherPostalCode',
-	'Contacts_OtherState',
-	'Contacts_OtherStreet',
-	'Contacts_PagerNumber',
-	'Contacts_RadioPhoneNumber',
-	'Contacts_Spouse',
-	'Contacts_Suffix',
-	'Contacts_Title',
-	'Contacts_Webpage',
-	'Contacts_YomiCompanyName',
-	'Contacts_YomiFirstName',
-	'Contacts_YomiLastName',
-	'Contacts_CompressedRTF',
-	'Contacts_Picture',
-	'Contacts_Alias',
-	'Contacts_WeightedRank',
-	'AirSyncBase_BodyPreference',
-	'AirSyncBase_Type',
-	'AirSyncBase_TruncationSize',
-	'AirSyncBase_AllOrNone',
-	'AirSyncBase_Body',
-	'AirSyncBase_Data',
-	'AirSyncBase_EstimatedDataSize',
-	'AirSyncBase_Truncated',
-	'AirSyncBase_Attachments',
-	'AirSyncBase_Attachment',
-	'AirSyncBase_DisplayName',
-	'AirSyncBase_FileReference',
-	'AirSyncBase_Method',
-	'AirSyncBase_ContentId',
-	'AirSyncBase_ContentLocation',
-	'AirSyncBase_IsInline',
-	'AirSyncBase_NativeBodyType',
-	'AirSyncBase_ContentType',
-	'AirSyncBase_Preview',
-	'FolderHierarchy_DisplayName',
-	'FolderHierarchy_ServerId',
-	'FolderHierarchy_ParentId',
-	'FolderHierarchy_Type',
-	'FolderHierarchy_Status',
-	'FolderHierarchy_Changes',
-	'FolderHierarchy_Add',
-	'FolderHierarchy_Delete',
-	'FolderHierarchy_Update',
-	'FolderHierarchy_SyncKey',
-	'FolderHierarchy_FolderCreate',
-	'FolderHierarchy_FolderDelete',
-	'FolderHierarchy_FolderUpdate',
-	'FolderHierarchy_FolderSync',
-	'FolderHierarchy_Count',
-	'Contacts2_CustomerId',
-	'Contacts2_GovernmentId',
-	'Contacts2_IMAddress',
-	'Contacts2_IMAddress2',
-	'Contacts2_IMAddress3',
-	'Contacts2_ManagerName',
-	'Contacts2_CompanyMainPhone',
-	'Contacts2_AccountName',
-	'Contacts2_NickName',
-	'Contacts2_MMS'
-  ), 
+	// Contacts (codepage 0x01)
+	'Contacts_Anniversary':              0x0105,
+	'Contacts_AssistantName':            0x0106,
+	'Contacts_AssistantTelephoneNumber': 0x0107,
+	'Contacts_Birthday':                 0x0108,
+	'Contacts_Body':                     0x0109,
+	'Contacts_Business2PhoneNumber':     0x010C,
+	'Contacts_BusinessCity':             0x010D,
+	'Contacts_BusinessCountry':          0x010E,
+	'Contacts_BusinessPostalCode':       0x010F,
+	'Contacts_BusinessState':            0x0110,
+	'Contacts_BusinessStreet':           0x0111,
+	'Contacts_BusinessFaxNumber':        0x0112,
+	'Contacts_BusinessPhoneNumber':      0x0113,
+	'Contacts_CarPhoneNumber':           0x0114,
+	'Contacts_Categories':               0x0115,
+	'Contacts_Category':                 0x0116,
+	'Contacts_Children':                 0x0117,
+	'Contacts_Child':                    0x0118,
+	'Contacts_CompanyName':              0x0119,
+	'Contacts_Department':               0x011A,
+	'Contacts_Email1Address':            0x011B,
+	'Contacts_Email2Address':            0x011C,
+	'Contacts_Email3Address':            0x011D,
+	'Contacts_FileAs':                   0x011E,
+	'Contacts_FirstName':                0x011F,
+	'Contacts_Home2PhoneNumber':         0x0120,
+	'Contacts_HomeCity':                 0x0121,
+	'Contacts_HomeCountry':              0x0122,
+	'Contacts_HomePostalCode':           0x0123,
+	'Contacts_HomeState':                0x0124,
+	'Contacts_HomeStreet':               0x0125,
+	'Contacts_HomeFaxNumber':            0x0126,
+	'Contacts_HomePhoneNumber':          0x0127,
+	'Contacts_JobTitle':                 0x0128,
+	'Contacts_LastName':                 0x0129,
+	'Contacts_MiddleName':               0x012A,
+	'Contacts_MobilePhoneNumber':        0x012B,
+	'Contacts_OfficeLocation':           0x012C,
+	'Contacts_OtherCity':                0x012D,
+	'Contacts_OtherCountry':             0x012E,
+	'Contacts_OtherPostalCode':          0x012F,
+	'Contacts_OtherState':               0x0130,
+	'Contacts_OtherStreet':              0x0131,
+	'Contacts_PagerNumber':              0x0132,
+	'Contacts_RadioPhoneNumber':         0x0133,
+	'Contacts_Spouse':                   0x0134,
+	'Contacts_Suffix':                   0x0135,
+	'Contacts_Title':                    0x0136,
+	'Contacts_Webpage':                  0x0137,
+	'Contacts_YomiCompanyName':          0x0138,
+	'Contacts_YomiFirstName':            0x0139,
+	'Contacts_YomiLastName':             0x013A,
+	'Contacts_CompressedRTF':            0x013B,
+	'Contacts_Picture':                  0x013C,
+	'Contacts_Alias':                    0x013D,
+	'Contacts_WeightedRank':             0x013E,
 
-  tokens: Array(
-	// AirSync
-	0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
-	0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-	0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22,
-	0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 
-	// Contacts
-	0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11,
-	0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B,
-	0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25,
-	0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
-	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
-	0x3A, 0x3B, 0x3C, 0x3D, 0x3E,
-	// AirSyncBase
-	0x05, 0x06, 0x07, 0x08, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-	// FolderHierarchy
-	0x07, 0x08, 0x09, 0x0A, 0x0C, 0x0E, 0x0F, 0x10, 0x11, 0x12,
-	0x13, 0x14, 0x15, 0x16, 0x17, 
-	// Contacts2
-	0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E
-  ),
+	// FolderHierarchy (codepage 0x07)
+	'FolderHierarchy_DisplayName':       0x0707,
+	'FolderHierarchy_ServerId':          0x0708,
+	'FolderHierarchy_ParentId':          0x0709,
+	'FolderHierarchy_Type':              0x070A,
+	'FolderHierarchy_Status':            0x070C,
+	'FolderHierarchy_Changes':           0x070E,
+	'FolderHierarchy_Add':               0x070F,
+	'FolderHierarchy_Delete':            0x0710,
+	'FolderHierarchy_Update':            0x0711,
+	'FolderHierarchy_SyncKey':           0x0712,
+	'FolderHierarchy_FolderCreate':      0x0713,
+	'FolderHierarchy_FolderDelete':      0x0714,
+	'FolderHierarchy_FolderUpdate':      0x0715,
+	'FolderHierarchy_FolderSync':        0x0716,
+	'FolderHierarchy_Count':             0x0717,
 
-  wbxml_codepage: 0,
+	// Contacts2 (codepage 0x0C)
+	'Contacts2_CustomerId':              0x0C05,
+	'Contacts2_GovernmentId':            0x0C06,
+	'Contacts2_IMAddress':               0x0C07,
+	'Contacts2_IMAddress2':              0x0C08,
+	'Contacts2_IMAddress3':              0x0C09,
+	'Contacts2_ManagerName':             0x0C0A,
+	'Contacts2_CompanyMainPhone':        0x0C0B,
+	'Contacts2_AccountName':             0x0C0C,
+	'Contacts2_NickName':                0x0C0D,
+	'Contacts2_MMS':                     0x0C0E,
 
-  doWbxml: function(domstring) {  
-	if (typeof domstring == 'object')
-		domstring = this.domStr(domstring);
-	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-		.createInstance(Components.interfaces.nsIDOMParser);
-	var doc = parser.parseFromString(domstring, "text/xml");
+	// AirSyncBase (codepage 0x11)
+	'AirSyncBase_BodyPreference':        0x1105,
+	'AirSyncBase_Type':                  0x1106,
+	'AirSyncBase_TruncationSize':        0x1107,
+	'AirSyncBase_AllOrNone':             0x1108,
+	'AirSyncBase_Body':                  0x110A,
+	'AirSyncBase_Data':                  0x110B,
+	'AirSyncBase_EstimatedDataSize':     0x110C,
+	'AirSyncBase_Truncated':             0x110D,
+	'AirSyncBase_Attachments':           0x110E,
+	'AirSyncBase_Attachment':            0x110F,
+	'AirSyncBase_DisplayName':           0x1110,
+	'AirSyncBase_FileReference':         0x1111,
+	'AirSyncBase_Method':                0x1112,
+	'AirSyncBase_ContentId':             0x1113,
+	'AirSyncBase_ContentLocation':       0x1114,
+	'AirSyncBase_IsInline':              0x1115,
+	'AirSyncBase_NativeBodyType':        0x1116,
+	'AirSyncBase_ContentType':           0x1117,
+	'AirSyncBase_Preview':               0x1118
+  },
 
+  // reverse lookup table, initialized programmatically (see function at the end of this file)
+  // {codepage: {token: tagname}}
+  tokens: {},
+  
+  // these tags are translated into javascript arrays
+  multi: {
+	'Add': true,
+	'Change': true,
+	'Delete': true,
+	'Collection': true,
+	'SoftDelete': true,
+	'Contacts_Category': true,
+	'Contacts_Child': true,
+	'FolderHierarchy_Add': true,
+	'FolderHierarchy_Delete': true,
+	'FolderHierarchy_Update': true
+  },
+
+  // [tag, content, tag, content, ...] -> wbxml
+  // contect may be null or ""
+  // example:
+  //   <FolderSync><FolderSync_SyncKey>0</FolderSync_SyncKey></FolderSync>
+  //   ['FolderSync', ['FolderSync_SyncKey', '0']]
+  obj2wbxml: function(obj) {  
 	var header = String.fromCharCode(0x03,0x01,0x6A,0x00); 
-	/*var header = String.fromCharCode( // mit DTD
-		0x03,0x00,0x00,0x6A,0x1c,0x2d,0x2f,0x2f,0x41,0x49,0x52,0x53,0x59,0x4e,0x43,0x2f,
-		0x2f,0x44,0x54,0x44,0x20,0x41,0x69,0x72,0x53,0x79,0x6e,0x63,0x2f,0x2f,0x45,0x4e,
-		0x00
-	);*/ 
-	this.wbxml_codepage = 0; 
-	var wbxml = header + this._node2wbxml(doc.firstChild);
 
-	return wbxml;	
-  },
+	var wbxml_codepage = 0;		// state used in inner function
 
-  _node2wbxml: function(dom) { 
-	// strange elements from DOM-string converting destroy rest of tree -> pass out
-	if (this.tags.indexOf(dom.nodeName) < 0) 
-		return "";
-	var nwbxml = ''; 
-	// page of current tag
-	var nodeArr = dom.nodeName.split('_'); 
-	if (typeof nodeArr[1] == 'undefined') 
-		var aPage = 0;
-	else
-		var aPage = this.codePages.indexOf(nodeArr[0]); 
-	if(aPage != this.wbxml_codepage) { 
-		// change codePage
-		nwbxml = nwbxml + String.fromCharCode(0x00) + String.fromCharCode(aPage); 
-		this.wbxml_codepage = aPage; 
-	}
-	// open tag
-	var token = this.tokens[this.tags.indexOf(dom.nodeName)]; 
+	function obj2wbxml_internal(obj) {
+		var i, tagname, content, parts, aPage;
+		var wbxml_data = '';
+		for (i=0; i<obj.length; i+=2) {
+			tagname = obj[i];
+			content = obj[i+1];
 
-	if(dom.childNodes.length > 0)
-		token = token + 0x40; 
-	nwbxml = nwbxml + String.fromCharCode(token);
-	// childs
-	if (dom.childNodes.length > 0) { 
-		for (var i=0; i<dom.childNodes.length; i++) {
-			if(dom.childNodes[i].nodeName == '#text')
-				nwbxml = nwbxml + String.fromCharCode(0x03) + this.utf8Encode(dom.childNodes[i].nodeValue) + String.fromCharCode(0x00);
-			else
-				nwbxml = nwbxml + this._node2wbxml(dom.childNodes[i]);
-		}	
-	}
-	// close tag (if children inside)
-	if (dom.childNodes.length > 0) {
-		nwbxml = nwbxml + String.fromCharCode(0x01); 
-	}
-	return nwbxml;
-  },
+			if (wbxml.tags[tagname]===undefined) { new SyntaxError("wbxml2obj: tag '"+tagname+"' is unknown."); }
 
-  doXml: function(wbxml) {
-	// check for wbxml input in ms airsync dialect
-	if (typeof wbxml == "undefined" || String(wbxml).substr(0, 4) != String.fromCharCode(0x03,0x01,0x6A,0x00))
-		return null;
-
-	var page = 0; var cmd = ''; 
-	var xml = '<?xml version="1.0" encoding="utf-8"?>'; var lastTags = new Array();
-	for(var i=4; i<wbxml.length; i++) {
-		var c = wbxml.charCodeAt(i); 
-		// following bytes
-		if (cmd != '') {
-			if (cmd == 'selectPage') {
-				page = c; 
-				cmd = ''; 
-				continue;
+			// page of current tag
+			aPage = wbxml.tags[tagname]>>8;
+			if (aPage != wbxml_codepage) {
+				// change codePage
+				wbxml_data += String.fromCharCode(0x00) + String.fromCharCode(aPage); 
+				wbxml_codepage = aPage;
 			}
-			else if (cmd == 'inString') {
-				if (c == 0x00) {
-					cmd = '';
-					/* 
-					   replace forbidden xml characters (strings are not to be escaped?) <--> ab.commandCard()
-					*/
-					inString = inString.replace(/</g, '&lt;');
-					inString = inString.replace(/>/g, '&gt;');
-					//inString = inString.replace(/"/g, '&quot;');
-					inString = inString.replace(/&/g, '&amp;');
-					// inString = inString.replace("/'/g", '&apos;');
-					xml = xml + inString;
+			// open tag
+			var token = wbxml.tags[tagname]&0xFF;
+
+			if (content!==null && content!=="") {
+				token = token + 0x40;
+			}
+			wbxml_data = wbxml_data + String.fromCharCode(token);
+			// content
+			if (content!==null && content!=="") {
+				if (typeof content == 'object') {
+					wbxml_data += obj2wbxml_internal(content);
+				} else {
+					wbxml_data += String.fromCharCode(0x03) + wbxml.utf8Encode(String(content)) + String.fromCharCode(0x00);
 				}
-				else
-					inString = inString + wbxml[i];
-				continue;
+			}
+			// close tag (if content inside)
+			if (content!==null && content!=="") {
+				wbxml_data += String.fromCharCode(0x01); 
 			}
 		}
-		// actual bytes
-		if (c==0x00) { 
-			// code page changes
-			cmd = 'selectPage';
-			continue;
-		}
-		else if (c==0x03) {
-			// string follows
-			var inString = '';
-			cmd = 'inString';
-			continue;
-		}
-		else if (c==0x01) {
-			// end tag
-			xml = xml + '</' + lastTags.pop()+ '>';
-		}
-		else if (c>=0x05) { 
-			// remove type addition from tags
-			var inside = true;
-			if(c > 0xC0) c = c - 0xC0;
-			else if(c > 0x80) { c = c - 0x80; inside=false; }
-			else if(c > 0x40) c = c - 0x40;
-			else inside=false;
-			// find tag
-			var acp = this.codePages[page]; 
-			var acp_i = 0;
-			var tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
-			// scan all tokens until the one for the right codepage is found
-			if(page > 0) {
-				while (acp_i < this.tags.length && tag.substr(0, acp.length) != acp ) { 
-					tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
-					//if(tag.substr(0, acp.length) != acp) 
-					acp_i = this.tokens.indexOf(c, acp_i) + 1; 
-				} 
-			} 
-			if (inside==true) {
-				lastTags.push(tag); 
-				xml = xml + '<' + tag + '>'; 
-			} 
-			else {
-                                xml = xml + '<' + tag + '/>'; 
-				continue;
-			}
-		}	
-		
-	} 
-	// final tag
-	if (lastTags.length > 0)
-		xml = xml + '</' + lastTags.pop()+ '>'; 
-	// make Dom out of it
-	try { 
-		var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-			.createInstance(Components.interfaces.nsIDOMParser);
-		return parser.parseFromString(xml, "text/xml");
+		return wbxml_data;
 	}
-	catch (err) {
-		helper.prompt("The server didn't response valid dom structure \n" + err);
-	}
-  }, 
 
-  domStr: function(dom) {
-	var serializer = new XMLSerializer();
-	return serializer.serializeToString(dom);
-  }, 
+	return header + obj2wbxml_internal(obj);
+  },
+
+  // convert wbxml to javascript data structure
+  // wbxml -> {tag: content, tag: [content, content, ...], ...}
+  wbxml2obj: function(wbxml_data) {
+	// check for wbxml input in ms airsync dialect
+	if (!wbxml_data || String(wbxml_data).substr(0, 4) != String.fromCharCode(0x03,0x01,0x6A,0x00)) {
+		return null;
+	}
+	
+	var i = 4, page = 0;	// used in inner function via closure
+
+	function wbxml2obj_internal() {
+		var c, beg, tagname, inside, content;
+		var obj = {};
+		while (i < wbxml_data.length) {
+			c = wbxml_data.charCodeAt(i++);
+
+			if (c==0x00) {				// code page changes: 00 xx
+				page = wbxml_data.charCodeAt(i++);
+			}
+			else if (c==0x03) {			// inline string: 03 xx xx xx xx 00
+				beg = i;
+				i = wbxml_data.indexOf(String.fromCharCode(0), beg);
+				if (i<0) {
+					i = wbxml_data.length;		// should never happen
+				}
+				// obj must not contain anything!
+				obj = wbxml_data.substring(beg, i++);
+				//obj = wbxml.utf8Decode(obj);
+			}
+			else if (c==0x01) {			// end tag
+				return obj;
+			}
+			else if (c>=0x05) {			// tags
+				// remove type addition from tags
+				inside = (c & 0x40);
+				c &= 0x3F;
+
+				// find tag
+				if (wbxml.tokens[page]===undefined) { new SyntaxError("wbxml2obj: codepage 0x"+page.toString(16)+" cannot be processed."); }
+				if (wbxml.tokens[page][c]===undefined) { new SyntaxError("wbxml2obj: token 0x"+ c.toString(16)+" from codepage 0x" + page.toString(16) + " cannot be processed."); }
+				
+				tagname = wbxml.tokens[page][c];
+
+				if (inside) {
+					content = wbxml2obj_internal();		// get content
+				} else {
+					content = '1';				// boolean, default is '1' (true)
+				}
+
+				if (wbxml.multi[tagname]) {		// array?
+					if (obj[tagname]) {
+						obj[tagname].push(content);	// append
+					} else {
+						obj[tagname] = [content];	// create array
+					}
+				} else {						// single element
+					if (obj[tagname]) {
+						throw new SyntaxError("wbxml2obj: tag '"+tagname+"' occurs multiple times.");
+					}
+					obj[tagname] = content;
+				}
+			}
+		}
+		return obj;
+	}
+	
+	// now call the function
+	return wbxml2obj_internal();
+  },
 
   utf8Encode: function (string) {
-	string = string.replace(/\r\n/g,"\n"); 
-	var utf8string = "";
-	for (var n = 0; n < string.length; n++) {
-		var c = string.charCodeAt(n);
+	var utf8string = "", n, c;
+	for (n = 0; n < string.length; n++) {
+		c = string.charCodeAt(n);
 		if (c < 128) {
-			utf8string += String.fromCharCode(c);
+			utf8string += String.fromCharCode(c);					// 0xxxxxxx
 		}
-		else if((c > 127) && (c < 2048)) {
-			utf8string += String.fromCharCode((c >> 6) | 192);
-			utf8string += String.fromCharCode((c & 63) | 128);
+		else if(c < 2048) {
+			utf8string += String.fromCharCode((c >> 6) | 192);		// 110xxxxx
+			utf8string += String.fromCharCode((c & 63) | 128);  	// 10xxxxxx
 		}
 		else {
-			utf8string += String.fromCharCode((c >> 12) | 224);
-			utf8string += String.fromCharCode(((c >> 6) & 63) | 128);
-			utf8string += String.fromCharCode((c & 63) | 128);
+			utf8string += String.fromCharCode((c >> 12) | 224);			// 1110xxxx
+			utf8string += String.fromCharCode(((c >> 6) & 63) | 128);	// 10xxxxxx
+			utf8string += String.fromCharCode((c & 63) | 128);          // 10xxxxxx
 		}
 	}
 	return utf8string;
@@ -373,11 +336,11 @@ var wbxml = {
  
   utf8Decode: function (utf8string) {
 	var string = "";
-	var i = 0; var c = c1 = c2 = 0;
+	var i = 0, c, c2, c3;
 	while ( i < utf8string.length ) {
 		c = utf8string.charCodeAt(i);
 		if (c < 128) {
-			utf8string += String.fromCharCode(c);
+			string += String.fromCharCode(c);
 			i++;
 		}
 		else if((c > 191) && (c < 224)) {
@@ -388,51 +351,66 @@ var wbxml = {
 		else {
 			c2 = utf8string.charCodeAt(i+1);
 			c3 = utf8string.charCodeAt(i+2);
-			utf8string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+			string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
 			i += 3;
 		}
 	}
 	return string;
   }, 
 
-  httpRequest: function(xml, command) { 
+  httpRequest: function(obj, command) { 
 	// set default function values
-	if (typeof command == 'undefined')
-		command = 'Sync'; 
+	helper.debugOut("\nREQUEST: "+JSON.stringify(obj)+"\n");
 
-	if (typeof xml == 'string')
-		var wbxml = this.doWbxml(xml);
-	else {
-		var serializer = new XMLSerializer();
-		var wbxml = this.doWbxml( serializer.serializeToString(xml) );
+	if (typeof command == 'undefined') {
+		command = 'Sync';
 	}
 
+	var wbxml_data = this.obj2wbxml(obj);
+	
 	// request
 	var req = new XMLHttpRequest(); 
 	req.mozBackgroundRequest = true; 
 	req.open("POST", config.url+'?Cmd='+command+'&User='+config.user+'&DeviceId=ThunderTine'+config.deviceId+'&DeviceType='+config.deviceType, true);
-	req.overrideMimeType('application/vnd.ms-sync.wbxml'); 
+	//req.overrideMimeType('application/vnd.ms-sync.wbxml'); 
+	req.overrideMimeType("text/plain; charset=utf-8");        // Overrides the MIMEtype returned by the server (avoids the error message in TB console)
 	req.setRequestHeader("User-Agent", config.deviceType+' ActiveSync');
 	req.setRequestHeader("Content-Type", 'application/vnd.ms-sync.wbxml');
 	req.setRequestHeader("Authorization", 'Basic '+btoa(config.user+':'+config.pwd));
 	req.setRequestHeader("MS-ASProtocolVersion", '2.5');
-	req.setRequestHeader("Content-Length", wbxml.length);
+	req.setRequestHeader("Content-Length", wbxml_data.length);
 	req.onload = function () {
 		if (req.readyState == 4) {
 			if (req.status == 200) {
-				if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
-					helper.prompt(ttine.strings.getString('notTine'));
+				// if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
+				//     helper.prompt(ttine.strings.getString('notTine'));
+
+				helper.debugOut("\nRESPONSE: "+JSON.stringify(wbxml.wbxml2obj(req.responseText))+"\n");
 				sync.dispatch(req);
 			}
-			else 
+			else {
+				helper.debugOut("\nRESPONSE: Failed: "+req.responseText+"\n");
 				sync.failed('http', req);
+			}
 		} 
-	}
+	};
 	req.upload.onerror = function (e) {
 		helper.prompt("Error " + e.target.status + " occurred while uploading.");
+	};
+	req.sendAsBinary(wbxml_data);
+  }
+
+};
+
+// initialize internal wbxml.tokens datastructure
+(function() {
+	var codepage, tag;
+	for (var tokenname in wbxml.tags) {
+		codepage = wbxml.tags[tokenname]>>8;
+		tag = wbxml.tags[tokenname]&0xFF;
+  		if (!wbxml.tokens[codepage]) {
+			wbxml.tokens[codepage] = {}
+		}
+		wbxml.tokens[codepage][tag] = tokenname;
 	}
-	req.sendAsBinary(wbxml);
-  }, 
-
-}
-
+})();

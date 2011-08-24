@@ -24,19 +24,30 @@ var ttine = {
     // initialization code
     this.strings = document.getElementById("ttine-strings");
 	config.read();
+	
+	helper.debugOut("\n================================================================\n");
+	helper.debugOut("overlay.onLoad(): config.contactsSyncKey = '"+JSON.stringify(config.contactsSyncKey)+"'\n");
 
-	if (config.minimumConfig())
+	if (config.minimumConfig()) {
 		this.initialized = true;
 
+		// set lastStatus=1 so that sync can be executed
+		sync.lastStatus = 1;
+	}
+	
 	// go syncing some seconds after Thunderbird is loaded
 	this.timerId = window.setTimeout('ttine.sync();', 1000);
   },
 
   onUnLoad: function() {
-	if (config.syncBeforeClose)
-		this.sync();
-    //else
+    // must not sync without processing the response, therefore commented this out
+    
+	//if (config.syncBeforeClose) {
+	//	this.sync();
+	//}
+	//else {
 	//	config.write();
+	//}
   },
 
   onMenuItemCommand: function(e) { 
@@ -46,15 +57,9 @@ var ttine = {
 		return false;
 	}
 	// delete existing timer
-	if(typeof this.timerId == "number")
+	if (typeof this.timerId == "number") {
 		window.clearTimeout(this.timerId);
-
-	// save old values
-	var ocontactsLocalFolder = config.contactsLocalFolder;
-	var ocontactsRemoteFolder = config.contactsRemoteFolder;
-	/*
-	 * missing for calendar and tasks
-	 */
+	}
 
 	// show options
 	window.open(
@@ -64,15 +69,7 @@ var ttine = {
 		null, null
 	); 
 	this.initialized = true; 
-	config.read();
-
-	// compare old & new folders
-	if (ocontactsLocalFolder != config.contactsLocalFolder || ocontactsRemoteFolder != config.contactsRemoteFolder)
-		config.contactsSyncKey = 0;
-
-	/*
-	 * MISSING: calendar and tasks reset syncKey to 0
-	 */
+	config.read(); 			// config parameters may have changed -> load parameters into config object in this scope
 
 	// now sync to initialize a new timer
 	this.sync();
@@ -80,15 +77,17 @@ var ttine = {
 
   onSync: function(e) {
 	// right mouse click 
-	if(e.button == 2) 
+	helper.debugOut("overlay.onSync(): sync.lastStatus="+sync.lastStatus+"\n");
+	if (e.button == 2) {
 		this.onMenuItemCommand(e);
+	}
 	// left click, if error is present
 	else if (sync.lastStatus != 1) {
 		if (!isNaN(sync.lastStatus)) {
 			var serverResponse = this.strings.getString('serverResponse')+"\n"+errortxt.sync['code'+sync.lastStatus];
 			if (sync.lastStatus==3 || sync.lastStatus==7) {
 				if (helper.ask(serverResponse+"\n\n"+this.strings.getString('serverReturnZero'))) {
-					config.folderSyncKey = 0;
+					config.folderSyncKey[sync.syncFolders[0]] = 0; 		// is this right?
 					this.sync();
 				}
 			}
@@ -103,19 +102,21 @@ var ttine = {
 		}
 	}
 	// normally sync
-	else
+	else {
 		this.sync();
+	}
   }, 
 
   statusBar: function(state) { 
-	let statusbar = document.getElementById("status-bar-thundertine");
+	var statusbar = document.getElementById("status-bar-thundertine");
 	if (state == '' || state == null) {
-		if (sync.inProgress)
+		if (sync.inProgress) {
 			state = 'working';
-		else if (!sync.inProgress && !this.initialized)
+		} else if (!sync.inProgress && !this.initialized) {
 			state = 'inactive';
-		else
+		} else {
 			state = 'icon';
+		}
 	}
 	statusbar.setAttribute("image", "chrome://ttine/skin/ttine_" + state + ".png");
 	statusbar.blur();
@@ -124,19 +125,19 @@ var ttine = {
 
   sync: function() { 
 	// if other thread is already running quit
-	if (sync.inProgress || !this.initialized)
+	if (sync.inProgress || !this.initialized) {
 		return false;
+	}
 
-	if(typeof this.timerId == "number")
+	if (typeof this.timerId == "number") {
 		window.clearTimeout(this.timerId);
+	}
 
-	var toDo = Array('start');
-	if (config.checkFolderBefore)
+	var toDo = ['start'];
+	if (config.checkFolderBefore) {
 		toDo.push('folderSync');
-	toDo.push('prepareContacts');
-	/*
-	 * MISSING: prepare calendar and tasks
-	 */
+	}
+	//toDo.push('prepareContacts');
 	toDo.push('sync');
 	toDo.push('finish');
 	sync.execute( toDo );

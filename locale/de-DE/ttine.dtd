@@ -1,4 +1,4 @@
-<!ENTITY ttine.menuLabel "Tine 2.0 Sync Einstellungen...">
+﻿<!ENTITY ttine.menuLabel "Tine 2.0 Sync Einstellungen...">
 <!ENTITY ttine.statusLabel "Sync Tine 2.0">
 <!ENTITY ttine.statusTooltip "Linksklick synchronisiert - Rechtsklick öffnet das Einstellungsfenster.">
 
@@ -32,6 +32,7 @@
 			es kann jedoch bei nicht-leeren Büchern zu Doppel-Einträgen führen.">
 <!ENTITY ttine.prefwindowRemoteFolders "entfernte Kontakt-Verzeichnisse">
 <!ENTITY ttine.prefwindowRemoteRefresh "Verzeichnisliste erneuern...">
+<!ENTITY ttine.prefwindowRemoteFoldersText "Die ausgewählten entfernten Verzeichnisse werden mit gleichnamigen lokalen Adressbüchern synchronisiert.">
 
 <!ENTITY ttine.prefwindowAbout1 "Diese Erweiterung gleicht die Kontakte aus einem Thunderbird Addressbuch mit
 	der Groupware Tine 2.0 (http://www.tine20.org/) ab. Dazu wird zwar das ActiveSync Protokoll verwendet, 
