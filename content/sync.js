@@ -25,25 +25,23 @@ var sync = {
   lastStatus: 0,
 
   /*
-   * The dispatcher is the origin and destination of every action. 
+   * The dispatcher is the origin of every action.
    * It keeps the order for asynchronous calls. Always return to dispatch!
    */
 
   dispatcher: [],	// contains a sequence of commands to process, for example ["start", "folderSync", "sync", "finish"]
-  dispGoTo: null, 
   
   syncFolders: [],	// contains a list of remote folder IDs to be synced, when a folder has been processed it is removed from this list
 
   // start a sequence of commands
   execute: function(dispatcher) {
-	// new command set is given
-	if (dispatcher) {
-		this.dispatcher = dispatcher;
-		this.dispGoTo = null;
-	}
-	// initialize this.syncFolders
-	this.syncFolders = [];
 	var id;
+
+	// initialize sequence of commands
+	this.dispatcher = dispatcher;
+	
+	// initialize list of folders to be synchronized
+	this.syncFolders = [];
 	for (id in config.contactsSyncKey) {
 		this.syncFolders.push(id);
 	}
@@ -51,68 +49,57 @@ var sync = {
 	this.dispatch();
   },
 
-  dispatch: function(req) { 
-
-    if (this.dispGoTo) {
-        helper.debugOut("<-- sync.dispatch(), this.dispGoTo="+this.dispGoTo+", this.dispatcher="+JSON.stringify(this.dispatcher)+
-		                ", this.syncFolders="+JSON.stringify(this.syncFolders)+", req="+req+"\n");
-	}
-
-	// just returned to here
-	switch (this.dispGoTo) {
-		case 'folderSync': 
-			if (!req || !folder.updateFinish(req) || !folder.stillExists(this.syncFolders[0])) {
-				helper.debugOut("sync.dispatch(): folderSync failed -> set status = 12\n");
-				this.failed(12);
-				return false;
-			} 
-			this.dispatcher.splice(0, 1);
-			this.dispGoTo = null;
-			break;
-		case 'remoteFoldersFinish': 
-			if (req) {
-				if (folder.updateFinish(req)) {
-					remoteFoldersFinish();			// this works only if the folder sync has been started from the options dialog
-				}
-			}
-			this.dispatcher.splice(0, 1);
-			this.dispGoTo = null;
-			break;
-		case 'sync': 
-			var status = this.response(req);
-			if (status != 1 && status != 7) {
-				this.failed(status);
-			}
-			this.dispGoTo = null;
-			break;
-	}
-
+  dispatch: function() {
+  
 	// empty dispatcher means nothing to do
 	if (this.dispatcher.length <= 0) {
 		return null;
 	}
 
-    helper.debugOut("--> sync.dispatch(), this.dispGoTo="+this.dispGoTo+", this.dispatcher="+JSON.stringify(this.dispatcher)+
-	                ", this.syncFolders="+JSON.stringify(this.syncFolders)+", req="+req+"\n");
+    helper.debugOut("\n--> sync.dispatch(), this.dispatcher="+JSON.stringify(this.dispatcher)+
+	                ", this.syncFolders="+JSON.stringify(this.syncFolders)+"\n");
 
 	// go for next action
-	switch(this.dispatcher[0]) {
+	switch (this.dispatcher[0]) {
+
 		case "folderSync":
-			this.dispGoTo = 'folderSync';
-			folder.update();
+			folder.update(function(req) {
+				// cannot use this.xyz in callback function (use sync.xyz instead)
+				if (!req || !folder.updateFinish(req) || !folder.stillExists(sync.syncFolders[0])) {
+					helper.debugOut("sync.dispatch(): folderSync failed -> set status = 12\n");
+					sync.failed(12);
+					return false;
+				} 
+				sync.dispatcher.splice(0, 1);
+				sync.dispatch();
+			});
 			break;
+
 		case "folderSync_Options":
-			this.dispGoTo = 'remoteFoldersFinish';
-			folder.update();
+			folder.update(function(req) {
+				// cannot use this.xyz in callback function (use sync.xyz instead)
+				if (req) {
+					if (folder.updateFinish(req)) {
+						remoteFoldersFinish();			// this works only if the folder sync has been started from the options dialog
+					}
+				}
+				sync.dispatcher.splice(0, 1);
+				sync.dispatch();
+			});
 			break;
+
 		case "sync": 
-			this.dispGoTo = 'sync';
 			this.dispatcher.splice(0, 1);
-			if (this.request() == false) {
-				this.dispGoTo = null;
-				this.dispatch();
-			}
+			this.request(function(req){
+				// cannot use this.xyz in callback function (use sync.xyz instead)
+				var status = sync.response(req);
+				if (status != 1 && status != 7) {
+					sync.failed(status);
+				}
+				sync.dispatch();
+			});						// TODO: check return value of request() function
 			break;
+
 		case "start":
 			this.inProgress = true; 
 			if (ttine.statusBar) {
@@ -121,17 +108,16 @@ var sync = {
 			this.dispatcher.splice(0, 1);
 			this.dispatch();
 			break;
+
 		case "finish":
 			this.inProgress = false; 
 			if (ttine.statusBar) {
 				ttine.statusBar();
-				ttine.timerId = window.setTimeout('ttine.sync();', config.interval);
+				ttine.timerId = window.setTimeout('ttine.sync();', config.interval);		// schedule next sync
 			}
 			this.dispatcher.splice(0, 1);
 			this.lastStatus = 1;
 			break;
-		default:
-			this.dispGoTo = '';
 	}
   },
 
@@ -152,7 +138,8 @@ var sync = {
    * THE SYNC itself
    */
 
-  request: function() {
+  // send the sync request. f is the callback function
+  request: function(f) {
     //
     // ["Sync", ["Collections", ["Collection", [...], ...]]]
     //
@@ -168,7 +155,7 @@ var sync = {
 
 	collections.push('Collection', this.createContactsCollection());
 
-	wbxml.httpRequest(req); // asynchroneus -> ends up in this.dispatch()
+	wbxml.httpRequest(req, "Sync", f); // asynchroneus request -> response ends up in callback function f
 	return true;
   }, 
 

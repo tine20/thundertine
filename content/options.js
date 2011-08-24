@@ -190,7 +190,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	config.deviceId = deviceId; 
 	config.folderSyncKey = 0;
 	if (config.minimumConfig()) {
-		sync.execute(Array('start', 'folderSync_Options', 'finish'));
+		sync.execute( ['start', 'folderSync_Options', 'finish'] );
 	}
   } 
 

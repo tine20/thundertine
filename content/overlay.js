@@ -138,8 +138,7 @@ var ttine = {
 		toDo.push('folderSync');
 	}
 	//toDo.push('prepareContacts');
-	toDo.push('sync');
-	toDo.push('finish');
+	toDo.push('sync', 'finish');
 	sync.execute( toDo );
   }
 

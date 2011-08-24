@@ -358,13 +358,9 @@ var wbxml = {
 	return string;
   }, 
 
-  httpRequest: function(obj, command) { 
+  httpRequest: function(obj, command, f) { 
 	// set default function values
 	helper.debugOut("\nREQUEST: "+JSON.stringify(obj)+"\n");
-
-	if (typeof command == 'undefined') {
-		command = 'Sync';
-	}
 
 	var wbxml_data = this.obj2wbxml(obj);
 	
@@ -386,7 +382,7 @@ var wbxml = {
 				//     helper.prompt(ttine.strings.getString('notTine'));
 
 				helper.debugOut("\nRESPONSE: "+JSON.stringify(wbxml.wbxml2obj(req.responseText))+"\n");
-				sync.dispatch(req);
+				f(req);  	// invoke callback function
 			}
 			else {
 				helper.debugOut("\nRESPONSE: Failed: "+req.responseText+"\n");

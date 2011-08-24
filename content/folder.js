@@ -26,11 +26,11 @@ var folder = {
    *
    */
 
-  update: function() {
+  update: function(f) {
 	// ask folders
 	helper.debugOut("folder.update()\n");
 	var folderRequest = ["FolderHierarchy_FolderSync", ["FolderHierarchy_SyncKey", config.folderSyncKey]];
-	wbxml.httpRequest(folderRequest, 'FolderSync'); 
+	wbxml.httpRequest(folderRequest, 'FolderSync', f); 
   }, 
 
   updateFinish: function(req) { 
