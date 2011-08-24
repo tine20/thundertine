@@ -115,7 +115,7 @@ var folder = {
    */
   listFolderIds: function(type) {
 	var resArr = [], i;
-	for (i in config.folderIds) {
+	for (i=0; i<config.folderIds.length; i++) {
 		if (type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14)) {
 			resArr.push(config.folderIds[i]);
 		}
@@ -125,7 +125,7 @@ var folder = {
 
   listFolderNames: function(type) {
 	var resArr = [], i;
-	for (i in config.folderIds) {
+	for (i=0; i<config.folderIds.length; i++) {
 		if (type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14)) {
 			resArr.push(config.folderNames[i]);
 		}

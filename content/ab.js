@@ -320,7 +320,7 @@ var ab = {
   },
 
   // prepare the commands to be sent to the server
-  // ["Add", [...], "Add", [...], "Change", [...], "Delete", [...], ...
+  // ["Add", [...], "Change", [...], "Delete", [...], ...]
   commandsDom: function(contactsLocalFolder) { 
     helper.debugOut("ab.commandsDom('"+contactsLocalFolder+"')\n");
    	var entry, clientId, tineId, i;

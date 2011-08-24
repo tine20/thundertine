@@ -29,7 +29,7 @@ var sync = {
    * It keeps the order for asynchronous calls. Always return to dispatch!
    */
 
-  dispatcher: [],	// contains a sequence of commands to process
+  dispatcher: [],	// contains a sequence of commands to process, for example ["start", "folderSync", "sync", "finish"]
   dispGoTo: null, 
   
   syncFolders: [],	// contains a list of remote folder IDs to be synced, when a folder has been processed it is removed from this list
@@ -72,7 +72,7 @@ var sync = {
 		case 'remoteFoldersFinish': 
 			if (req) {
 				if (folder.updateFinish(req)) {
-					remoteFoldersFinish();
+					remoteFoldersFinish();			// this works only if the folder sync has been started from the options dialog
 				}
 			}
 			this.dispatcher.splice(0, 1);
@@ -153,6 +153,10 @@ var sync = {
    */
 
   request: function() {
+    //
+    // ["Sync", ["Collections", ["Collection", [...], ...]]]
+    //
+    
 	var collections = [];
 	var req = ["Sync", ["Collections", collections]];
 
@@ -274,9 +278,18 @@ var sync = {
   },
 
   createContactsCollection: function() {
+    //
+    // ["Class",        "Contacts",
+    //  "SyncKey",      "xxx",
+    //  "CollectionId", "xxx",
+    //  "Supported",    [tagname, null, tagname, null, ...],                      (only when SyncKey == 0)
+    //  "GetChanges",   null,                                                     (only when SyncKey != 0)
+    //  "Commands",     ["Add", [...], "Change", [...], "Delete", [...], ...]     (only when SyncKey != 0)
+    // ]
+  
 	var col = [];
 
-	// collections -> Collection -> Class
+	// collections -> Collection -> Class    (is this required?)
 	col.push('Class', 'Contacts');
 	
 	// get the CollectionId and SyncKey of the current folder
@@ -325,7 +338,7 @@ var sync = {
 
 		// remove this folder from the list
 		this.syncFolders.splice(0, 1);
-		if (this.syncFolders.length>0) {
+		if (this.syncFolders.length > 0) {
 			// if there are still folders to do then queue next request
 			this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'sync');
 		}

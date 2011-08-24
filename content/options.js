@@ -112,12 +112,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			if (item.selected) {
 				//helper.debugOut("selected item: folderName="+folderName+", folderId="+folderId+"\n");
 				if (config.contactsSyncKey[folderId]===undefined) {
-					config.contactsSyncKey[folderId] = 0;
+					config.contactsSyncKey[folderId] = 0;                // set SyncKey=0 if the sync relationship is new
 				}
+				// SyncKey of the folder is defined!
 				if (localAdressbook[folderName]===undefined) {
 					helper.debugOut("local address book '"+folderName+"' is missing. Can't sync this folder.\n");
 					helper.prompt("Local address book '"+folderName+"' is missing. Can't sync this folder.\n\nPlease add the address book manually.");
-					delete config.contactsSyncKey[folderId];
+					delete config.contactsSyncKey[folderId];			// do not sync this folder
 				} else {
 					// save sync relationship: folderID, URI
 					helper.debugOut("connect: folderName='"+folderName+"', folderId='"+folderId+"', URI='"+localAdressbook[folderName]+"'\n");
@@ -126,11 +127,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			} else {
 				// no longer connected, remove metadata (if there is any)
 				helper.debugOut("disconnect: folderName='"+folderName+"', folderId='"+folderId+"', URI='"+localAdressbook[folderName]+"'\n");
-				delete config.contactsSyncKey[folderId];
-				delete config.contactsFolder[folderId];
+				delete config.contactsSyncKey[folderId];				// remove the SyncKey of this contacts folder
+				delete config.contactsFolder[folderId];					// remove the relationship to the local address book
 				if (folderName && localAdressbook[folderName]) {
-					delete config.managedCards[localAdressbook[folderName]];
-					ab.doClearExtraFields(localAdressbook[folderName]);
+					delete config.managedCards[localAdressbook[folderName]];	// remove the list of managed cards of this local address book
+					ab.doClearExtraFields(localAdressbook[folderName]);			// remove TineSyncId and TineSyncMD5 fields
 				}
 			}
 		}
