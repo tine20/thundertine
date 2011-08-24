@@ -1,7 +1,7 @@
 THUNDERTINE 0.3 (xx.xx.2011)      PRELIMINARY!
 ----------------------------
 
-This Thundertine 0.3 version is an update of Thundertine 0.2 release from 16.01.2011. It adds
+This Thundertine 0.3 version is an update of the Thundertine 0.2 release from 16.01.2011. It adds
 some new features and has improvements under the hood. While the general program structure
 has not changed, internal data structures have been simplified by using JavaScript/JSON objects
 instead of DOM/XML. Synchronization of multiple address books is now supported.
@@ -17,8 +17,6 @@ FUNCTIONAL CHANGES
   encoded as special lines "{field:value}" at the beginning of the TB Notes field.
   Note: These fields are ghosted, meaning if they are deleted at the client, they
   will not automatically be deleted at the server.
-- ActiveSync fields which are encoded in the TB Notes are "ghosted", i.e. if missing
-  at the client, they will not be removed at the server.
 - Adapted ThunderTine sourcecode to work with Z-Push and Zarafa groupware
 
 TECHNICAL CHANGES
