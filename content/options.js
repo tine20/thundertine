@@ -91,19 +91,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		// store (valid) folder settings
 
 		// get local addressbooks
-		var item, i, listbox, folderName, folderId, localAdressbook = {};
-		var abManager = Components.classes["@mozilla.org/abmanager;1"].getService(Components.interfaces.nsIAbManager);
-		var allAddressBooks = abManager.directories;
-		while (allAddressBooks.hasMoreElements()) {  
-			var addressBook = allAddressBooks.getNext();
-			if (addressBook instanceof Components.interfaces.nsIAbDirectory && 
-				!addressBook.isRemote && !addressBook.isMailList && addressBook.fileName != 'history.mab') {
-				localAdressbook[addressBook.dirName] = addressBook.URI;
-			}
-		}
+		var item, i, listbox, folderName, folderId, localAdressbook;
+		localAdressbook = localAbs();
 
 		// get remote folders
-		config.localContactsFolder = {}
+		config.localContactsFolder = {};
 		listbox = document.getElementById('remoteContactsFolder');
 		for (i=0; i<listbox.itemCount; i++) {
 			item = listbox.getItemAtIndex(i);
@@ -116,7 +108,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				}
 				// SyncKey of the folder is defined!
 				if (localAdressbook[folderName]===undefined) {
-					helper.debugOut("local address book '"+folderName+"' is missing. Can't sync this folder.\n");
+					helper.debugOut("local address book '"+folderName+"' is missing.\n");
+					// create local address book
+					abManager = Components.classes["@mozilla.org/abmanager;1"].getService(Components.interfaces.nsIAbManager);
+					abManager.newAddressBook(folderName, "", 2);   // "" = abManager creates uri, type 2 = PABDirectory
+					// re-read local address books
+					localAdressbook = localAbs();
+					helper.debugOut("created local addressbook '" + folderName + "', URI='" + localAdressbook[folderName] + "'\n");
+				}
+
+				if (localAdressbook[folderName]===undefined) {
+					// URI of local address book is still undefined!
+					helper.debugOut("local address book '"+folderName+"' is missing and couldn't be created. Can't sync this folder.\n");
 					helper.prompt("Local address book '"+folderName+"' is missing. Can't sync this folder.\n\nPlease add the address book manually.");
 					delete config.contactsSyncKey[folderId];			// do not sync this folder
 				} else {
@@ -160,8 +163,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	}
   }
 
+  // populates the localContactsFolder listbox
+  // returns an object with all local address books: {name: uri, ...}
   function localAbs() {
-	var listbox = document.getElementById('localContactsFolder');
+	var listbox = document.getElementById('localContactsFolder'), localAdressbook = {};
 	while (listbox.itemCount>0) {
 		listbox.removeItemAt(0);
 	}
@@ -172,8 +177,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		if (addressBook instanceof Components.interfaces.nsIAbDirectory && 
 			!addressBook.isRemote && !addressBook.isMailList && addressBook.fileName != 'history.mab') {
 			listbox.appendItem(addressBook.dirName, addressBook.URI);
+			localAdressbook[addressBook.dirName] = addressBook.URI;
 		}
 	}
+	return localAdressbook;
   }
 
   // command handler
