@@ -27,6 +27,9 @@ var config = {
   // remote folder Id -> SyncKey of folders to be synced
   contactsSyncKey: {},
 
+  // provision policyKey
+  policyKey: 0,
+ 
   // remote folders  
   folderSyncKey: 0, 
   folderIds: [], 
@@ -74,6 +77,7 @@ var config = {
 	var doc = {
 		'contactsSyncKey': this.contactsSyncKey,
 		'folderSyncKey':   this.folderSyncKey,
+		'policyKey':       this.policyKey,
 		'folderIds':       this.folderIds,
 		'folderNames' :    this.folderNames,
 		'folderTypes' :    this.folderTypes,
@@ -139,6 +143,7 @@ var config = {
 
 	this.contactsSyncKey = doc.contactsSyncKey;
 	this.folderSyncKey   = doc.folderSyncKey;
+	this.policyKey       = doc.policyKey;
 	this.folderIds       = doc.folderIds;
 	this.folderNames     = doc.folderNames;
 	this.folderTypes     = doc.folderTypes;

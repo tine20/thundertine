@@ -171,7 +171,19 @@ var wbxml = {
 	'AirSyncBase_IsInline':              0x1115,
 	'AirSyncBase_NativeBodyType':        0x1116,
 	'AirSyncBase_ContentType':           0x1117,
-	'AirSyncBase_Preview':               0x1118
+	'AirSyncBase_Preview':               0x1118,
+
+	// Provision (codepage 0x0E)
+	'Provision_Provision':               0x0E05,
+	'Provision_Policies':                0x0E06,
+	'Provision_Policy':                  0x0E07,
+	'Provision_PolicyType':              0x0E08,
+	'Provision_PolicyKey':               0x0E09,
+	'Provision_Data':                    0x0E0A,
+	'Provision_Status':                  0x0E0B,
+	'Provision_RemoteWipe':              0x0E0C,
+	'Provision_EASProvisionDoc':         0x0E0D
+
   },
 
   // reverse lookup table, initialized programmatically (see function at the end of this file)
@@ -370,6 +382,8 @@ var wbxml = {
 	req.open("POST", config.url+'?Cmd='+command+'&User='+config.user+'&DeviceId=ThunderTine'+config.deviceId+'&DeviceType='+config.deviceType, true);
 	//req.overrideMimeType('application/vnd.ms-sync.wbxml'); 
 	req.overrideMimeType("text/plain; charset=utf-8");        // Overrides the MIMEtype returned by the server (avoids the error message in TB console)
+	if ( config.policyKey != 0 )
+		req.setRequestHeader("X-MS-PolicyKey", config.policyKey);
 	req.setRequestHeader("User-Agent", config.deviceType+' ActiveSync');
 	req.setRequestHeader("Content-Type", 'application/vnd.ms-sync.wbxml');
 	req.setRequestHeader("Authorization", 'Basic '+btoa(config.user+':'+config.pwd));
@@ -377,14 +391,22 @@ var wbxml = {
 	req.setRequestHeader("Content-Length", wbxml_data.length);
 	req.onload = function () {
 		if (req.readyState == 4) {
-			if (req.status == 200) {
+			if (req.status == 449 && req.responseText == '') { 
+				// "Provision required" phase 1
+				sync.failed('provision', req);
+				sync.provision(req);
+			}
+			else if (req.status == 200 && command == 'Provision') {
+				// Provision phase 2
+				sync.provision(req);
+			}
+			else if (req.status == 200 && command != 'Provision') {
 				// if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
 				//     helper.prompt(ttine.strings.getString('notTine'));
 
 				helper.debugOut("\nRESPONSE: "+JSON.stringify(wbxml.wbxml2obj(req.responseText))+"\n");
 				f(req);  	// invoke callback function
-			}
-			else {
+			} else {
 				helper.debugOut("\nRESPONSE: Failed: "+req.responseText+"\n");
 				sync.failed('http', req);
 			}

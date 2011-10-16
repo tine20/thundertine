@@ -90,7 +90,7 @@ var sync = {
 
 		case "sync": 
 			this.dispatcher.splice(0, 1);
-			this.request(function(req){
+			this.request(function(req) {
 				// cannot use this.xyz in callback function (use sync.xyz instead)
 				var status = sync.response(req);
 				if (status != 1 && status != 7) {
@@ -126,6 +126,9 @@ var sync = {
 	this.dispatcher = [];
 	if (reason == 'http') {
 		helper.prompt(ttine.strings.getString('connectionFailed')+"\n\n" + txt.statusText + "\n\n"+ttine.strings.getString('checkSettings'));
+	} else if (reason == 'provision') {
+		sync.inProgress = false;
+		return true;	
 	} else {
 		this.lastStatus = reason;
 	}
@@ -133,6 +136,60 @@ var sync = {
 	ttine.initialized = false;
 	ttine.statusBar('error');
   }, 
+
+  /* 
+   * The server responded by telling us that we need to do provisioning
+   */
+  provision: function(req) {
+	this.dispatcher = [];
+
+	var provisions = []
+	var newReq = ["Provision_Provision", ["Provision_Policies", ["Provision_Policy", provisions ]]];
+	provisions.push( "Provision_PolicyType", "MS-WAP-Provisioning-XML" );
+
+	if ( req.status == 449 ) {
+		// phase 1 of provisioning
+		// set the PolicyKey to zero
+		config.policyKey = 0;
+		wbxml.httpRequest(newReq, "Provision")
+		return true;
+
+	} else if ( config.policyKey == 0 ){
+		// phase 2 of provisioning
+		var reqText = req.responseText;
+		var obj = wbxml.wbxml2obj(reqText);
+
+		// FIXME figure out what the status messages mean, 1 == good
+		var provisionStatus = obj.Provision_Provision.Provision_Status;
+		var policyStatus = obj.Provision_Provision.Provision_Policies.Provision_Policy.Provision_Status;
+		// this is the real provisioning details which we just ignore :)
+		//   it could be used to implement remoteWipe and more.
+		var policyData = obj.Provision_Provision.Provision_Policies.Provision_Policy.Provision_Data;
+		// store the policyKey for use in this provision request
+		config.policyKey = obj.Provision_Provision.Provision_Policies.Provision_Policy.Provision_PolicyKey;
+
+		provisions.push( "Provision_PolicyKey", config.policyKey );
+		provisions.push( "Provision_Status", "1" );
+		wbxml.httpRequest(newReq, "Provision"); // asynchroneus -> ends up in this.dispatch()
+		return true;
+
+	} else {
+		// provisioning is done
+		var reqText = req.responseText;
+		var obj = wbxml.wbxml2obj(reqText);
+		// FIXME figure out what the status messages mean, 1 == good
+		var provisionpolicyStatus = obj.Provision_Provision.Provision_Status;
+		// store the policyKey for use in this all regular sync requests
+		config.policyKey = obj.Provision_Provision.Provision_Policies.Provision_Policy.Provision_PolicyKey;
+		// set a short timeout so real syncing can begin after provisioning is doing
+		ttine.timerId = window.setTimeout('ttine.sync();', 1000);
+		sync.inProgress = false;
+		return true;
+	}
+
+
+  },
+                                
 
   /*
    * THE SYNC itself
@@ -230,7 +287,6 @@ var sync = {
 				// process the collection
 
 				status = collection[i].Status;
-				
 				if (status == 7) {
 					this.lastStatus = 7;
 				} else if (status != 1) {
