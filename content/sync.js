@@ -34,19 +34,23 @@ var sync = {
   syncCollections: Array(),
 
   execute: function(dispatcher) {
+	devTools.enter("sync", "execute");
 	// new command set is given
 	if (typeof dispatcher != 'undefined')
 		this.dispatcher = dispatcher;
 
 	this.dispatch();
+	devTools.leave("sync", "execute");
   },
 
   dispatch: function(req) { 
+	devTools.enter("sync", "dispatch");
 	// just returned to here
 	switch (this.dispGoTo) {
 		case 'folderSync': 
 			if(!folder.updateFinish(req) || !folder.stillExists()) {
 				this.failed(12);
+				devTools.leave("sync", "dispatch");
 				return false;
 			} 
 			this.dispatcher.splice(0,1);
@@ -68,8 +72,10 @@ var sync = {
 	}
 
 	// empty dispatcher means nothing to do
-	if (this.dispatcher.length <= 0)
+	if (this.dispatcher.length <= 0) {
+		devTools.leave("sync", "dispatch");
 		return null;
+	}
 
 	// go for next action
 	switch(this.dispatcher[0]) {
@@ -107,6 +113,7 @@ var sync = {
 			break;
 		case "start":
 			this.inProgress = true; 
+			devTools.writeMsg("sync", "dispatch", "sync started " + config.contactsLocalFolder + " - " + config.contactsRemoteFolder, true);
 			if (typeof ttine.statusBar != 'undefined')
 				ttine.statusBar('working');
 			this.dispatcher.splice(0,1);
@@ -118,6 +125,7 @@ var sync = {
 			if (typeof ttine.statusBar != 'undefined') {
 				ttine.statusBar();
 				ttine.timerId = window.setTimeout('ttine.sync();', config.interval);
+				devTools.writeMsg("sync", "dispatch", "sync finished successful " + config.contactsLocalFolder + " - " + config.contactsRemoteFolder, true);
 			}
 			this.dispatcher.splice(0,1);
 			this.lastStatus = 1;
@@ -125,9 +133,11 @@ var sync = {
 		default:
 			this.dispGoTo = '';
 	}
+	devTools.leave("sync", "dispatch");
   },
 
   failed: function (reason, txt) { 
+	devTools.enter("sync", "failed");
 	// In asynchron mode die silently -> visible in statusbar
 	this.dispatcher = Array();
 	if (reason == 'http')
@@ -137,6 +147,7 @@ var sync = {
 	sync.inProgress = false;
 	ttine.initialized = false;
 	ttine.statusBar('error');
+	devTools.leave("sync", "failed");
   }, 
 
   /*
@@ -144,6 +155,7 @@ var sync = {
    */
 
   request: function() { 
+	devTools.enter("sync", "request");
 	var doc = document.implementation.createDocument("", "", null);
 	var dom = doc.createElement('Sync');
 	// collections
@@ -164,12 +176,16 @@ var sync = {
 
 	if (this.syncCollections.length > 0)
 		wbxml.httpRequest(dom); // asynchroneus -> ends up in this.dispatch()
-	else
-		return false; 
+	else {
+		devTools.leave("sync", "request");
+		return false;
+	}
+	devTools.leave("sync", "request");
   }, 
 
 
   response: function(req) {  
+	devTools.enter("sync", "response");
 	var reqText = req.responseText; 
 	// check if WbXML returned
 	if (reqText.substr(0,4) != String.fromCharCode(0x03,0x01,0x6A,0x00) && reqText != '') {
@@ -177,6 +193,7 @@ var sync = {
 		ttine.initialized = false;
 		this.inProgress = false;
 		ttine.statusBar();
+		devTools.leave("sync", "response");
 		return reqText;
 	}
 	else if (reqText == '') {
@@ -186,6 +203,7 @@ var sync = {
 		 * isn't using it. 
 		 *
 		 */
+		devTools.leave("sync", "response");
 		return true; // empty response -> no changes / no syncKey change
 	}
 	else
@@ -208,6 +226,7 @@ var sync = {
 		if (status[0].firstChild.nodeValue == 7)
 			this.lastStatus = 7;
 		else if (status[0].firstChild.nodeValue != 1) {
+			devTools.leave("sync", "response");
 			return status[0].firstChild.nodeValue;
 		} 
 
@@ -230,11 +249,13 @@ var sync = {
 		config.write();
 	}
 
+	devTools.leave("sync", "response");
 	return syncStatus;
 
   },
 
   createContactsCollection: function() {
+	devTools.enter("sync", "createContactsCollection", "syncKey: " + config.contactsSyncKey + ", remoteFolder: " + config.contactsRemoteFolder);
 	var doc = document.implementation.createDocument("", "", null);
 	// collections -> Collection
 	var dom = doc.createElement('Collection');
@@ -252,6 +273,7 @@ var sync = {
 		dom.lastChild.appendChild(doc.createTextNode(config.contactsRemoteFolder));
 
 	if (config.contactsSyncKey == 0) { 
+		devTools.writeMsg("sync", "createContactsCollection", "config.contactsSyncKey == 0");
 		// collections -> Collection -> Supported
 		dom.appendChild( ab.supportedDom() );
 		// collections -> Collection -> Options
@@ -262,6 +284,7 @@ var sync = {
 		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'prepareContacts', 'sync');
 	}
 	else if (config.contactsSyncKey == 1) {
+		devTools.writeMsg("sync", "createContactsCollection", "config.contactsSyncKey == 1");
 		/*
 		 * Bug or feature? If syncKey = 1 then giving commands results to a Tine 2.0 exception.
 		 */
@@ -271,6 +294,7 @@ var sync = {
 		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'prepareContacts', 'sync');
 	}
 	else { 
+		devTools.writeMsg("sync", "createContactsCollection", "config.contactsSyncKey > 1");
 		// collections -> Collection -> GetChanges?
 		dom.appendChild(doc.createElement('GetChanges'));
 		// collections -> Collection -> Commands
@@ -281,6 +305,7 @@ var sync = {
 				dom.lastChild.appendChild(commands[i]);
 		} 
 	}
+	devTools.leave("sync", "createContactsCollection");
 	return dom;
   }, 
 
@@ -297,27 +322,32 @@ var sync = {
   }, 
 
   applyContactsCollection: function(responses, commands) {
+	devTools.enter("sync", "applyContactsCollection");
 	// process server response
-	if (responses.length > 0 && responses[0].children.length > 0) {
+	if (responses.length > 0 && responses[0].childNodes.length > 0) {
 
-		for (var r = 0; r < responses[0].children.length; r++) {
-			var cardDom = responses[0].children[r]; 
+		for (var r = 0; r < responses[0].childNodes.length; r++) {
+			var cardDom = responses[0].childNodes[r]; 
 			var cStatus = -1; var cServerId = null; var cClientId = null;
-			for (var c = 0; c < cardDom.children.length; c++) {
-				if (cardDom.children[c].nodeName == 'Status')
-					cStatus = cardDom.children[c].firstChild.nodeValue;
-				else if (cardDom.children[c].nodeName == 'ServerId')
-					cServerId = cardDom.children[c].firstChild.nodeValue;
-				else if (cardDom.children[c].nodeName == 'ClientId')
-					cClientId = cardDom.children[c].firstChild.nodeValue;
+			for (var c = 0; c < cardDom.childNodes.length; c++) {
+				if (cardDom.childNodes[c].nodeName == 'Status')
+					cStatus = cardDom.childNodes[c].firstChild.nodeValue;
+				else if (cardDom.childNodes[c].nodeName == 'ServerId')
+					cServerId = cardDom.childNodes[c].firstChild.nodeValue;
+				else if (cardDom.childNodes[c].nodeName == 'ClientId')
+					cClientId = cardDom.childNodes[c].firstChild.nodeValue;
 			}
 
 			if (cStatus != 1) {
-				helper.prompt("Syncing failed. The server responded: \n" + errortxt.sync['code'+cStatus]);
+				devTools.writeMsg("sync", "applyContactsCollection", "cStatus: " + cStatus);
+				if (cStatus == 8) {
+					devTools.writeMsg("sync", "applyContactsCollection", "clientID: " + cClientId + ", serverID: " + cServerId + ", status: " + cStatus + ", cardDom: " + wbxml.domStr(cardDom));
+					ab.removeCard((cServerId ? cServerId : cClientId));
+				}
 				continue;
 			} 
 
-			if (cardDom.nodeName == 'Add') 
+			if (cardDom.nodeName == 'Add')
 				ab.responseCard(cClientId, Array("TineSyncId", 'TineSyncMD5'), Array(cServerId, '') ); 
 			else if (cardDom.nodeName == 'Change')
 				ab.responseCard(cServerId, Array('TineSyncMD5'), Array('') );
@@ -325,15 +355,15 @@ var sync = {
 	}
 
 	// process server commands
-	if (commands.length > 0 && commands[0].children.length > 0) {
-		for (var r = 0; r < commands[0].children.length; r++) {
-			var cardDom = commands[0].children[r]; 
+	if (commands.length > 0 && commands[0].childNodes.length > 0) {
+		for (var r = 0; r < commands[0].childNodes.length; r++) {
+			var cardDom = commands[0].childNodes[r]; 
 			var cServerId = null; var cAppData = null;	
-			for (var c = 0; c < cardDom.children.length; c++) {
-				if (cardDom.children[c].nodeName == 'ServerId')
-					cServerId = cardDom.children[c].firstChild.nodeValue;
-				else if (cardDom.children[c].nodeName == 'ApplicationData')
-					cAppData = cardDom.children[c];
+			for (var c = 0; c < cardDom.childNodes.length; c++) {
+				if (cardDom.childNodes[c].nodeName == 'ServerId')
+					cServerId = cardDom.childNodes[c].firstChild.nodeValue;
+				else if (cardDom.childNodes[c].nodeName == 'ApplicationData')
+					cAppData = cardDom.childNodes[c];
 			}	
 
 			if (cardDom.nodeName == 'Add' || cardDom.nodeName == 'Change' || cardDom.nodeName == 'Delete') {
@@ -346,6 +376,7 @@ var sync = {
 
 	// keep track of cards for deleting
 	ab.managedCards();
+	devTools.leave("sync", "applyContactsCollection");
   }, 
 
   applyCalendarCollection: function(dom) {
