@@ -55,3 +55,5 @@ HISTORY
 
 0.1     Initial  Version: Sync contacts between Thunderbird and Tine 2.0
 0.2     Problems with ampersand ("&") solved
+0.3a	protocol version 12.0 (Kristina - 2013.03)
+	support for thunderbird 17.0.4 (various javascript bugfixes)
