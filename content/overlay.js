@@ -29,7 +29,8 @@ var ttine = {
 		this.initialized = true;
 
 	// go syncing some seconds after Thunderbird is loaded
-	this.timerId = window.setTimeout('ttine.sync();', 1000);
+	devTools.writeMsg("ttine", "onLoad", "register timer");
+	this.timerId = window.setTimeout('ttine.sync();', 5000);
   },
 
   onUnLoad: function() {
@@ -85,7 +86,9 @@ var ttine = {
 	// left click, if error is present
 	else if (sync.lastStatus != 1) {
 		if (!isNaN(sync.lastStatus)) {
-			var serverResponse = this.strings.getString('serverResponse')+"\n"+errortxt.sync['code'+sync.lastStatus];
+			var serverResponse = this.strings.getString('serverResponse');
+			//serverResponse += "\n"+errortxt.sync['code'+sync.lastStatus];
+			serverResponse += "\n ehl!!!";
 			if (sync.lastStatus==3 || sync.lastStatus==7) {
 				if (helper.ask(serverResponse+"\n\n"+this.strings.getString('serverReturnZero'))) {
 					config.folderSyncKey = 0;
@@ -121,8 +124,8 @@ var ttine = {
 	statusbar.blur();
   },
 
-
   sync: function() { 
+	devTools.enter("ttine", "sync");
 	// if other thread is already running quit
 	if (sync.inProgress || !this.initialized)
 		return false;
@@ -140,6 +143,7 @@ var ttine = {
 	toDo.push('sync');
 	toDo.push('finish');
 	sync.execute( toDo );
+	devTools.leave("ttine", "sync");
   }
 
 };

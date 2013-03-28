@@ -244,7 +244,7 @@ var wbxml = {
 				nwbxml = nwbxml + this._node2wbxml(dom.childNodes[i]);
 		}	
 	}
-	// close tag (if children inside)
+	// close tag (if childNodes inside)
 	if (dom.childNodes.length > 0) {
 		nwbxml = nwbxml + String.fromCharCode(0x01); 
 	}
@@ -415,7 +415,7 @@ var wbxml = {
 	req.setRequestHeader("User-Agent", config.deviceType+' ActiveSync');
 	req.setRequestHeader("Content-Type", 'application/vnd.ms-sync.wbxml');
 	req.setRequestHeader("Authorization", 'Basic '+btoa(config.user+':'+config.pwd));
-	req.setRequestHeader("MS-ASProtocolVersion", '2.5');
+	req.setRequestHeader("MS-ASProtocolVersion", '12.0');
 	req.setRequestHeader("Content-Length", wbxml.length);
 	req.onload = function () {
 		if (req.readyState == 4) {

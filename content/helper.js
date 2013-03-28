@@ -75,8 +75,7 @@ var helper = {
 		}  
 		cstream.close();
 		fstream.close();
-	}
-	catch(e) {
+	} catch(e) {
 		return false;
 	}
 	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]

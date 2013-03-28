@@ -99,7 +99,9 @@ var config = {
 	config.contactsLocalFolder = prefs.getCharPref("contactsLocalFolder");
 	config.contactsRemoteFolder = prefs.getCharPref("contactsRemoteFolder");
 	config.contactsLimitPictureSize = prefs.getBoolPref("contactsLimitPictureSize");
-        config.fullSilence = prefs.getBoolPref("fullSilence");
+    config.fullSilence = prefs.getBoolPref("fullSilence");
+    config.enableConsoleOutput = prefs.getBoolPref("enableConsoleOutput");
+    
 	// get password
 	var passwordManager = Components.classes["@mozilla.org/login-manager;1"]
 		.getService(Components.interfaces.nsILoginManager);
@@ -120,17 +122,17 @@ var config = {
 	if(doc==false) 
 		return false;
 
-	for (var i=0; i<doc.firstChild.children.length; i++) {
-		if (doc.firstChild.children[i].nodeName == 'folders') {
-			if(doc.firstChild.children[i].children.length > 0) {
+	for (var i=0; i<doc.firstChild.childNodes.length; i++) {
+		if (doc.firstChild.childNodes[i].nodeName == 'folders') {
+			if(doc.firstChild.childNodes[i].childNodes.length > 0) {
 				this.folderIds = Array();
 				this.folderNames = Array();
 				this.folderTypes = Array();
-				for (var a=0; a<doc.firstChild.children[i].children.length; a++) {
-					var folder = doc.firstChild.children[i].children[a];
-						for (var f=0; f<folder.children.length; f++) {
-							var tag = folder.children[f].nodeName;
-							var value = folder.children[f].firstChild.nodeValue;
+				for (var a=0; a<doc.firstChild.childNodes[i].childNodes.length; a++) {
+					var folder = doc.firstChild.childNodes[i].childNodes[a];
+						for (var f=0; f<folder.childNodes.length; f++) {
+							var tag = folder.childNodes[f].nodeName;
+							var value = folder.childNodes[f].firstChild.nodeValue;
 							if (tag == 'id')
 								this.folderIds.push(value);
 							else if (tag == 'name')
@@ -141,14 +143,14 @@ var config = {
 				}
 			}
 		}
-		else if (doc.firstChild.children[i].nodeName == 'managedCards') {
-			if(doc.firstChild.children[i].firstChild != null)
-				this['managedCards'] = doc.firstChild.children[i].firstChild.nodeValue.split(',');
+		else if (doc.firstChild.childNodes[i].nodeName == 'managedCards') {
+			if(doc.firstChild.childNodes[i].firstChild != null)
+				this['managedCards'] = doc.firstChild.childNodes[i].firstChild.nodeValue.split(',');
 			else 
 				this['managedCards'] = Array();
 		}
-		else if (doc.firstChild.children[i].firstChild != null)
-			this[doc.firstChild.children[i].nodeName] = doc.firstChild.children[i].firstChild.nodeValue;
+		else if (doc.firstChild.childNodes[i].firstChild != null)
+			this[doc.firstChild.childNodes[i].nodeName] = doc.firstChild.childNodes[i].firstChild.nodeValue;
 			
 	}
 
@@ -178,6 +180,17 @@ var config = {
 		return false;
   }, 
 
+  isConsoleOutputEnabled: function() {
+	// data in thunderbird config
+	var prefs = Components.classes["@mozilla.org/preferences-service;1"]
+					.getService(Components.interfaces.nsIPrefService);
+	prefs = prefs.getBranch("extensions.ttine.");
+		
+	config.enableConsoleOutput = prefs.getBoolPref("enableConsoleOutput");
+	
+	return config.enableConsoleOutput; 
+  },
+  
   minimumConfig: function() {
 	if (config.url != '' &&
 		config.user != '' &&

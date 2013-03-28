@@ -128,7 +128,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
 
   function localAbs() {
-	while (document.getElementById('localContactsFolder').children.length > 0)
+	while (document.getElementById('localContactsFolder').childNodes.length > 0)
 		document.getElementById('localContactsFolder').removeChild(document.getElementById('localContactsFolder').firstChild);
 	let abManager = Components.classes["@mozilla.org/abmanager;1"] 
 		.getService(Components.interfaces.nsIAbManager);
@@ -150,7 +150,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
 
   function remoteFolders() { 
-	while (document.getElementById('remoteContactsFolder').children.length > 0)
+	while (document.getElementById('remoteContactsFolder').childNodes.length > 0)
 		document.getElementById('remoteContactsFolder').removeChild(document.getElementById('remoteContactsFolder').firstChild);
 	config.url = (document.getElementById('hostSsl').checked ? 'https://' : 'http://') + 
 		document.getElementById('host').value + '/Microsoft-Server-ActiveSync';
