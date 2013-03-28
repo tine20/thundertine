@@ -396,6 +396,7 @@ var wbxml = {
   }, 
 
   httpRequest: function(xml, command) { 
+	devTools.enter("wbxml", "httpRequest");
 	// set default function values
 	if (typeof command == 'undefined')
 		command = 'Sync'; 
@@ -410,28 +411,32 @@ var wbxml = {
 	// request
 	var req = new XMLHttpRequest(); 
 	req.mozBackgroundRequest = true; 
-	req.open("POST", config.url+'?Cmd='+command+'&User='+config.user+'&DeviceId=ThunderTine'+config.deviceId+'&DeviceType='+config.deviceType, true);
+	req.open("POST", config.url+'/?Cmd='+command+'&User='+config.user+'&DeviceId=ThunderTine'+config.deviceId+'&DeviceType='+config.deviceType, true);
 	req.overrideMimeType('application/vnd.ms-sync.wbxml'); 
 	req.setRequestHeader("User-Agent", config.deviceType+' ActiveSync');
 	req.setRequestHeader("Content-Type", 'application/vnd.ms-sync.wbxml');
-	req.setRequestHeader("Authorization", 'Basic '+btoa(config.user+':'+config.pwd));
+	req.setRequestHeader("Authorization", 'Basic '+btoa(config.user+':'+config.getPwd()));
 	req.setRequestHeader("MS-ASProtocolVersion", '12.0');
 	req.setRequestHeader("Content-Length", wbxml.length);
 	req.onload = function () {
 		if (req.readyState == 4) {
+			devTools.enter("wbxml", "httpResponse", "status: " + req.status);
 			if (req.status == 200) {
 				if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
 					helper.prompt(ttine.strings.getString('notTine'));
 				sync.dispatch(req);
-			}
-			else 
+			} else 
 				sync.failed('http', req);
+
+			devTools.leave("wbxml", "httpResponse");
 		} 
 	}
 	req.upload.onerror = function (e) {
+		devTools.writeMsg("wbxml", "httpRequest", "upload failed: " + e.target.status);
 		helper.prompt("Error " + e.target.status + " occurred while uploading.");
 	}
 	req.sendAsBinary(wbxml);
+	devTools.leave("wbxml", "httpRequest");
   }, 
 
 }

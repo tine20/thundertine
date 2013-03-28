@@ -51,7 +51,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 					url, null, 'Tine 2.0 Active Sync', document.getElementById('user').value, 
 					logins[i].password, '', ''
 				); 
-				passwordManager.removeLogin(loginInfo); 
+				passwordManager.removeLogin(loginInfo);
+				config.setPwd('');
+				oldConfig.setPwd('');
 				document.getElementById('password').value = logins[i].password;
 				oldpwd = logins[i].password;
 				break;
@@ -87,7 +89,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		if ( document.getElementById('host').value != '' &&
 			document.getElementById('user').value != '' &&
 			document.getElementById('password').value ) {
-			passwordManager.addLogin(loginInfo); 
+			passwordManager.addLogin(loginInfo);
+			config.setPwd(document.getElementById('password').value);
 		}
 		// store (valid) folder settings
 		if (document.getElementById('localContactsFolder').value != null)
@@ -119,6 +122,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				oldpwd, '', ''
 			); 
 			passwordManager.addLogin(loginInfo);
+			oldConfig.setPwd(oldpwd);
 			oldpwd = ''; // prevent saving password twice
 		}
 		// old settings
@@ -156,7 +160,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		document.getElementById('host').value + '/Microsoft-Server-ActiveSync';
 	config.deviceType = (document.getElementById('iPhone').checked? 'iPhone' : 'ThunderTine');
 	config.user = document.getElementById('user').value;
-	config.pwd = document.getElementById('password').value;
+	config.setPwd(document.getElementById('password').value);
 	config.deviceId = deviceId; 
 	config.folderSyncKey = 0;
 	if (config.minimumConfig())

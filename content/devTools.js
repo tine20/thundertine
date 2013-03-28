@@ -17,7 +17,11 @@ var devTools = {
     },
     
     leave: function(comp, func) {
-    	this.write("leave: " + comp + "." + func);
+    	this.leave(comp, func, null);
+    },
+    
+    leave: function(comp, func, msg) {
+    	this.write("leave: " + comp + "." + func + (msg != null ? " -> " + msg : ""));
     },
     
 	write: function(msg) {

@@ -41,6 +41,7 @@ var ttine = {
   },
 
   onMenuItemCommand: function(e) { 
+	devTools.enter("ttine", "onMenuItemCommand");
 	// prevent changes while syncing
 	if (sync.inProgress) {
 		helper.prompt(this.strings.getString('syncInProgress'));
@@ -77,18 +78,20 @@ var ttine = {
 
 	// now sync to initialize a new timer
 	this.sync();
+	devTools.leave("ttine", "onMenuItemCommand");
   },
 
   onSync: function(e) {
+	devTools.enter("ttine", "onSync");
 	// right mouse click 
 	if(e.button == 2) 
 		this.onMenuItemCommand(e);
 	// left click, if error is present
 	else if (sync.lastStatus != 1) {
 		if (!isNaN(sync.lastStatus)) {
-			var serverResponse = this.strings.getString('serverResponse');
-			//serverResponse += "\n"+errortxt.sync['code'+sync.lastStatus];
-			serverResponse += "\n ehl!!!";
+			var serverResponse = this.strings.getString('serverResponse')+"\n";
+			// ehl
+			//serverResponse += errortxt.sync['code'+sync.lastStatus];
 			if (sync.lastStatus==3 || sync.lastStatus==7) {
 				if (helper.ask(serverResponse+"\n\n"+this.strings.getString('serverReturnZero'))) {
 					config.folderSyncKey = 0;
@@ -108,9 +111,12 @@ var ttine = {
 	// normally sync
 	else
 		this.sync();
+
+	devTools.leave("ttine", "onSync");
   }, 
 
   statusBar: function(state) { 
+	devTools.enter("ttine", "statusBar", "status: " + (status == '' ? '<empty>' : status));
 	let statusbar = document.getElementById("status-bar-thundertine");
 	if (state == '' || state == null) {
 		if (sync.inProgress)
@@ -122,13 +128,16 @@ var ttine = {
 	}
 	statusbar.setAttribute("image", "chrome://ttine/skin/ttine_" + state + ".png");
 	statusbar.blur();
+	devTools.leave("ttine", "statusBar");
   },
 
   sync: function() { 
 	devTools.enter("ttine", "sync");
 	// if other thread is already running quit
-	if (sync.inProgress || !this.initialized)
+	if (sync.inProgress || !this.initialized) {
+		devTools.leave("ttine", "sync", "false");
 		return false;
+	}
 
 	if(typeof this.timerId == "number")
 		window.clearTimeout(this.timerId);

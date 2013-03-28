@@ -44,13 +44,13 @@ var sync = {
   },
 
   dispatch: function(req) { 
-	devTools.enter("sync", "dispatch");
+	devTools.enter("sync", "dispatch", "req: " + req);
 	// just returned to here
 	switch (this.dispGoTo) {
 		case 'folderSync': 
 			if(!folder.updateFinish(req) || !folder.stillExists()) {
 				this.failed(12);
-				devTools.leave("sync", "dispatch");
+				devTools.leave("sync", "dispatch", "case folderSync: 12");
 				return false;
 			} 
 			this.dispatcher.splice(0,1);
@@ -73,7 +73,7 @@ var sync = {
 
 	// empty dispatcher means nothing to do
 	if (this.dispatcher.length <= 0) {
-		devTools.leave("sync", "dispatch");
+		devTools.leave("sync", "dispatch", "empty dispatcher");
 		return null;
 	}
 
@@ -226,7 +226,7 @@ var sync = {
 		if (status[0].firstChild.nodeValue == 7)
 			this.lastStatus = 7;
 		else if (status[0].firstChild.nodeValue != 1) {
-			devTools.leave("sync", "response");
+			devTools.leave("sync", "response", "status: " + status[0].firstChild.nodeValue);
 			return status[0].firstChild.nodeValue;
 		} 
 
@@ -249,7 +249,7 @@ var sync = {
 		config.write();
 	}
 
-	devTools.leave("sync", "response");
+	devTools.leave("sync", "response", "syncStatus: " + syncStatus);
 	return syncStatus;
 
   },
