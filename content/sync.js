@@ -44,7 +44,7 @@ var sync = {
   },
 
   dispatch: function(req) { 
-	devTools.enter("sync", "dispatch", "req: " + req);
+	devTools.enter("sync", "dispatch");
 	// just returned to here
 	switch (this.dispGoTo) {
 		case 'folderSync': 

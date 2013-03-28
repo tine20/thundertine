@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
- */
+*/
 
 var config = {
 
@@ -201,7 +201,7 @@ var config = {
 							'Tine 2.0 Active Sync');
 					for ( var i = 0; i < logins.length; i++) {
 						if (logins[i].username == config.user) {
-							devTools.writeMsg("config", "getPwd", "gotten from password manager (" + logins[i].password + ")");
+							devTools.writeMsg("config", "getPwd", "password manager");
 							config.setPwd(logins[i].password);
 							break;
 						}
@@ -211,7 +211,7 @@ var config = {
 				config.setPwd('');
 			}
 		} else
-			devTools.writeMsg("config", "getPwd", "gotten from cache (" + config.pwdCache + ")");
+			devTools.writeMsg("config", "getPwd", "cache");
 
 		devTools.leave("config", "getPwd");
 		return config.pwdCache;

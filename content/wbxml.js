@@ -411,7 +411,7 @@ var wbxml = {
 	// request
 	var req = new XMLHttpRequest(); 
 	req.mozBackgroundRequest = true; 
-	req.open("POST", config.url+'/?Cmd='+command+'&User='+config.user+'&DeviceId=ThunderTine'+config.deviceId+'&DeviceType='+config.deviceType, true);
+	req.open("POST", config.url+'?Cmd='+command+'&User='+config.user+'&DeviceId=ThunderTine'+config.deviceId+'&DeviceType='+config.deviceType, true);
 	req.overrideMimeType('application/vnd.ms-sync.wbxml'); 
 	req.setRequestHeader("User-Agent", config.deviceType+' ActiveSync');
 	req.setRequestHeader("Content-Type", 'application/vnd.ms-sync.wbxml');
