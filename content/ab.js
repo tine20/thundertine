@@ -78,7 +78,7 @@ var ab = {
 				card.getProperty("BirthYear", "0000"),
 				(card.getProperty("BirthMonth", "01") -1), // Month in js is from 0 to 11
 				card.getProperty("BirthDay", "00"),
-				aHours,00,00,000
+				aHours,0,0,0 //,00,00,000 // to avoid warnings
 			);
 			var tzOff = dLoc.getTimezoneOffset() * 60000;
 			//
@@ -87,7 +87,7 @@ var ab = {
 			//
 			if ((navigator.platform.substr(0,3)=='Win') && (dLoc.getFullYear()<=1970)) {
 				// Calculating with 1st february makes sure the year will be 1970 in normal time any case
-				var dTmp = new Date(1970, 01, 01, 00, 00, 00, 000); 
+				var dTmp = new Date(1970, 1, 1, 0, 0, 0, 0); //01, 01, 00, 00, 00, 000); // to avoid warnings 
 				tzOff = dTmp.getTimezoneOffset() * 60000;
 			}
 			var dAs = new Date(dLoc.getTime() + tzOff);
@@ -116,7 +116,7 @@ var ab = {
 			if( file.exists() && !file.isDirectory() ) {
 				var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"]
 					.createInstance(Components.interfaces.nsIFileInputStream); 
-				fstream.init(file, 0x01, 0444, 0);
+				fstream.init(file, 0x01, parseInt('0444', 8), 0);
 				var stream = Components.classes["@mozilla.org/binaryinputstream;1"]
 					.createInstance(Components.interfaces.nsIBinaryInputStream);
 				stream.setInputStream(fstream);
@@ -194,7 +194,7 @@ var ab = {
 						         .get("ProfD", Components.interfaces.nsIFile);
 			file.append(config.picDir);
 			file.append(photo); 
-			foStream.init(file, 0x02 | 0x08 | 0x20, 0600, 0);   // write, create, truncate
+			foStream.init(file, 0x02 | 0x08 | 0x20, parseInt('0600', 8), 0);   // write, create, truncate
 				var binary = atob(asValue);
 				foStream.write(binary, binary.length);
 			foStream.close();
@@ -205,13 +205,12 @@ var ab = {
 	}
   },
 
-  commandsDom: function() { 
-
+  commandsDom: function(uri) {
 	let abManager = Components.classes["@mozilla.org/abmanager;1"]
 		.getService(Components.interfaces.nsIAbManager);
 	
 	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder);
+		let addressBook = abManager.getDirectory(uri);
 		if (addressBook.fileName && !addressBook.isRemote && !addressBook.isMailList) { 
 			var cardArr = new Array();
 			let cards = addressBook.childCards;
@@ -246,12 +245,13 @@ var ab = {
 				}
 			}
 			// add cards which doesn't exist anymore
-			for (var i=0; i < config.managedCards.length; i++) {
+			var abSyncConfig = config.getAbSyncConfigByUri(uri);
+			for (var i=0; i < abSyncConfig.managedCards.length; i++) {
 				try {
-					let card = addressBook.getCardFromProperty("TineSyncId", config.managedCards[i], false); 
+					let card = addressBook.getCardFromProperty("TineSyncId", abSyncConfig.managedCards[i], false); 
 					if(card == null) {
 						var doc = document.implementation.createDocument("", "", null);
-						var cardDom = this.asDelDom(config.managedCards[i]);
+						var cardDom = this.asDelDom(abSyncConfig.managedCards[i]);
 						cardArr.push( doc.appendChild(cardDom) );
 					}
 				} catch(addEx) {
@@ -384,12 +384,12 @@ supportedDom: function() {
 	return resArr;
   }, 
 
-  removeCard: function(tineSyncId) {
+  removeCard: function(uri, tineSyncId) {
 		devTools.enter("ab", "removeCard", "syncID: " + tineSyncId);
 		let abManager = Components.classes["@mozilla.org/abmanager;1"]
 			.getService(Components.interfaces.nsIAbManager);
 		try {
-			let addressBook = abManager.getDirectory(config.contactsLocalFolder); 
+			let addressBook = abManager.getDirectory(uri); 
 			if (addressBook.fileName && !addressBook.isRemote && !addressBook.isMailList) { 
 				let card = addressBook.getCardFromProperty("TineSyncId", tineSyncId, false); 
 				if(card == null)
@@ -409,12 +409,13 @@ supportedDom: function() {
 		devTools.leave("ab", "removeCard");
 	  }, 
 
-  responseCard: function(tineSyncId, fields, values) {
+  responseCard: function(uri, tineSyncId, fields, values) {
 	devTools.enter("ab", "responseCard", "syncID: " + tineSyncId + (values != null && values.length > 1 ? ", values[0]: " + values[0] : ""));
+
 	let abManager = Components.classes["@mozilla.org/abmanager;1"]
 		.getService(Components.interfaces.nsIAbManager);
 	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder); 
+		let addressBook = abManager.getDirectory(uri); 
 		if (addressBook.fileName && !addressBook.isRemote && !addressBook.isMailList) { 
 			let card = addressBook.getCardFromProperty("TineSyncId", tineSyncId, false); 
 			if(card == null)
@@ -457,18 +458,20 @@ supportedDom: function() {
 	devTools.leave("ab", "responseCard");
   }, 
 
-  commandCard: function(command, id, appDataDom) { 
+  commandCard: function(uri, command, id, appDataDom) { 
 	devTools.enter("ab", "responseCard", "command: " + command + ", id: " + id);
+
 	let abManager = Components.classes["@mozilla.org/abmanager;1"]
 		.getService(Components.interfaces.nsIAbManager);
 
 	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder); 
+		let addressBook = abManager.getDirectory(uri); 
 		if (addressBook.fileName && !addressBook.isRemote && !addressBook.isMailList) { 
 			if(command == 'Add' || command == 'Change') {
+				var abSyncConfig = config.getAbSyncConfigByUri(uri);
 				let card = null; 
 				// If cards are resent (syncKey = 0) don't change existing (managed) cards
-				if(command == 'Change' || config.managedCards.indexOf(id) >= 0 ) 
+				if(command == 'Change' || abSyncConfig.managedCards.indexOf(id) >= 0 ) 
 					card = addressBook.getCardFromProperty("TineSyncId", id, false); 
 				else { // new card
 					card = Components.classes["@mozilla.org/addressbook/cardproperty;1"]  
@@ -511,7 +514,7 @@ supportedDom: function() {
 				// give md5hash (otherwise it will be sent to the server again)
 				card.setProperty('TineSyncMD5', this.md5hash(md5text));
 				// save changes. If cards are resent (syncKey = 0) don't change existing (managed) cards
-				if (command == 'Change' || config.managedCards.indexOf(id) >= 0 )
+				if (command == 'Change' || abSyncConfig.managedCards.indexOf(id) >= 0 )
 					addressBook.modifyCard(card); 
 				else if (command == 'Add')
 					addressBook.addCard(card);
@@ -549,19 +552,20 @@ supportedDom: function() {
 	return content;
   },
 
-  managedCards: function() {
+  managedCards: function(uri) {
 	let abManager = Components.classes["@mozilla.org/abmanager;1"]
 		.getService(Components.interfaces.nsIAbManager);
 
-	let addressBook = abManager.getDirectory(config.contactsLocalFolder);
+	let addressBook = abManager.getDirectory(uri);
 	let cards = addressBook.childCards;
-	config.managedCards = Array();
+	var abSyncConfig = config.getAbSyncConfigByUri(uri);
+	abSyncConfig.managedCards = Array();
 	while (cards.hasMoreElements()) { 
 		let card = cards.getNext();
 		if (card instanceof Components.interfaces.nsIAbCard) {
 			var tineId = card.getProperty("TineSyncId", ""); 
 			if(tineId != '' && tineId.substr(0,7) != 'client-')
-				config.managedCards.push(tineId);
+				abSyncConfig.managedCards.push(tineId);
 		}
 	} 
   },
@@ -587,19 +591,6 @@ supportedDom: function() {
 			card.deleteProperty("TineSyncMD5");
 			card.deleteProperty("TineSyncId");
 		}
-	}
-  }, 
-
-  stillExists: function() { 
-
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
-	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder);
-		return true;
-	}
-	catch (err) {
-		return false;
 	}
   }
 

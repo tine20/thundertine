@@ -1,27 +1,15 @@
 var devTools = {
 	
-	writeMsg: function(comp, func, msg) {
-		this.writeMsg(comp, func, msg, false);
-	},
-	
 	writeMsg: function(comp, func, msg, timed) {
-		this.write(comp + "." + func + ": " + (timed == true ? new Date() + " " : "") + msg);
-    },
-    
-    enter: function(comp, func) {
-    	enter(comp, func, null);
+		this.write(comp + "." + func + (msg != undefined ? ": " + (timed == true ? new Date() + " " : "") + msg : ""));
     },
     
     enter: function(comp, func, msg) {
-    	this.write("enter: " + comp + "." + func + (msg != null ? " -> " + msg : ""));
-    },
-    
-    leave: function(comp, func) {
-    	this.leave(comp, func, null);
+    	this.write("enter: " + comp + "." + func + (msg != undefined ? " -> " + msg : ""));
     },
     
     leave: function(comp, func, msg) {
-    	this.write("leave: " + comp + "." + func + (msg != null ? " -> " + msg : ""));
+    	this.write("leave: " + comp + "." + func + (msg != undefined ? " -> " + msg : ""));
     },
     
 	write: function(msg) {

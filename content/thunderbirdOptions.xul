@@ -9,8 +9,7 @@
 	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
 	onload="onopen();"
 	ondialogaccept="onclose(true);"
-	onunload="onclose();"
-	ondialogcancel="onclose(false)">
+	ondialogcancel="onclose(false);">
 
   <prefpane id="paneThunderTineHost" label="&ttine.prefwindowToolbarHost;" image="chrome://ttine/skin/tine.png">
 	<preferences>
@@ -48,30 +47,28 @@
   </prefpane>
 
   <prefpane id="paneThunderTineContacts" label="&ttine.prefwindowToolbarContacts;" image="chrome://ttine/skin/contacts.png">
-	<preferences>
-		<preference id="contactsLocalFolderPref" name="extensions.ttine.contactsLocalFolder" type="string"/>
-		<preference id="contactsRemoteFolderPref" name="extensions.ttine.contactsRemoteFolder" type="string"/>
-		<preference id="iPhonePref" name="extensions.ttine.iPhone" type="bool"/>
-	</preferences>
-	<vbox>
-		<groupbox>
+        <preferences>
+                <preference id="fullSilencePref" name="extensions.ttine.fullSilence" type="bool"/>
+        </preferences>
+        <groupbox>
 			<caption label="&ttine.prefwindowLocalBooks;" />
-			<listbox id="localContactsFolder" rows="3" preference="contactsLocalFolderPref"></listbox>
-			<hbox>
-				<button id="addLocalContactsFolder" label="&ttine.prefwindowAddNew;" oncommand="newAb();" />
-				<spacer flex="1" />
-				<button id="reinitLocalContactsFolder" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" />
-			</hbox>
-			<label width="1" class="small-margin" crop="end">&ttine.prefwindowReinitializeText;
-			 </label>
-		</groupbox>
-		<groupbox>
-			<caption label="&ttine.prefwindowRemoteFolders;" />
-			<listbox id="remoteContactsFolder" rows="3"></listbox>
-			<checkbox id="iPhone" label="&ttine.prefwindowIPhone;" preference="iPhonePref" oncommand="remoteFolders();" hidden="true" />
-			<button id="remoteContactsFolderRefresh" label="&ttine.prefwindowRemoteRefresh;" oncommand="remoteFolders();" />
-		</groupbox>
-	</vbox>
+        	<listbox id="localContactsFolderMultiple" rows="10" onselect="onListBoxSelection();">
+        		<listhead>
+        			<listheader label="Name" />
+        			<listheader label="Sync." />
+        			<listheader label="&ttine.prefwindowRemoteFolders;" />
+        		</listhead>
+        		<listcols>
+        			<listcol flex="10"/>
+        			<listcol flex="1" align="center"/>
+        			<listcol flex="10"/>
+        		</listcols>
+        	</listbox>
+        	<hbox>
+        		<button id="toggleSync" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
+        		<button id="reinitSync" label="&ttine.prefwindowReinitialize;" oncommand="reInit();"  disabled="true" />
+        	</hbox>
+        </groupbox>
   </prefpane>
 
   <prefpane id="paneThunderTineAbout" label="&ttine.prefwindowToolbarAbout;" image="chrome://ttine/skin/ttine.png">
@@ -96,6 +93,7 @@
   <script src="sync.js" type="application/x-javascript;version=1.7" />
   <script src="options.js" type="application/x-javascript;version=1.7" />
   <script src="devTools.js" type="application/x-javascript;version=1.7" />
+  <script src="dialog.js" type="application/x-javascript;version=1.7" />
 
 </prefwindow>
 

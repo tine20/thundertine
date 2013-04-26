@@ -58,3 +58,4 @@ HISTORY
 0.3a	protocol version 12.0 (Kristina - 2013.03)
 	support for thunderbird 17.0.4 (various javascript bugfixes)
 	delayed access to password manager (on first httpRequest; increases usability if masterpassword is used)
+	support for syncing multiple contact folders added (several modifications under the hood; simplified sync code)

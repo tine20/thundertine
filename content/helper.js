@@ -28,12 +28,13 @@ var helper = {
 		var result = xpe.evaluate(aExpr, aNode, nsResolver, 0, null);  
 		var found = [];  
 		var res;  
-		while (res = result.iterateNext())  
+		while ((res = result.iterateNext()) != null) // to avoid warnings  
 			found.push(res);  
 		return found;  
 	}
 	catch (err) {
 		helper.prompt("DOM Error \n\n" + err);
+		return undefined;
 	}
   },
 
@@ -51,12 +52,13 @@ var helper = {
 		.getService(Components.interfaces.nsIProperties)
 		.get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
 	file.append(filename); // set file name
-	foStream.init(file, 0x02 | 0x08 | 0x20, 0664, 0);   // write, create, truncate
+	foStream.init(file, 0x02 | 0x08 | 0x20, parseInt('0664',8), 0);   // write, create, truncate
 		serializer.serializeToStream(dom, foStream, "");
 	foStream.close();
   },
 
   file2dom: function(filename) {
+	devTools.enter('helper', 'file2dom', 'filename: ' + filename);
 	var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"]
 		.createInstance(Components.interfaces.nsIFileInputStream); 
 	 var cstream = Components.classes["@mozilla.org/intl/converter-input-stream;1"]  
@@ -66,7 +68,7 @@ var helper = {
 		.get("ProfD", Components.interfaces.nsILocalFile); // get profile folder
 	try {
 		file.append(filename); // set file name
-		fstream.init(file, 0x01, 0444, 0);
+		fstream.init(file, 0x01, parseInt('0444',8), 0);
 		cstream.init(fstream, "UTF-8", 0, 0);
 		var data;
 		let (str = {}) {  
@@ -76,10 +78,12 @@ var helper = {
 		cstream.close();
 		fstream.close();
 	} catch(e) {
+		devTools.leave('helper', 'file2dom', 'exception: ' + e);
 		return false;
 	}
 	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
 		.createInstance(Components.interfaces.nsIDOMParser); 
+	devTools.leave('helper', 'file2dom');
 	return parser.parseFromString(data, "text/xml"); 
   }, 
 
@@ -126,18 +130,18 @@ var helper = {
 	file.append('debug.out');
 	var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
 		.createInstance(Components.interfaces.nsIFileOutputStream);
-	foStream.init(file, 0x02 | 0x08 | 0x20, 0664, 0);   // write, create, truncate
+	foStream.init(file, 0x02 | 0x08 | 0x20, parseInt('0664',8), 0);   // write, create, truncate
 		foStream.write(data, data.length);
 	foStream.close();
   },
 
-  showExtraFields: function() {
+  showExtraFields: function(uri) {
 	var res = '';
 
 	let abManager = Components.classes["@mozilla.org/abmanager;1"]
 		.getService(Components.interfaces.nsIAbManager);
 	
-	let addressBook = abManager.getDirectory(config.contactsLocalFolder);
+	let addressBook = abManager.getDirectory(uri);
 	let cards = addressBook.childCards;
 	while (cards.hasMoreElements()) { 
 		let card = cards.getNext();

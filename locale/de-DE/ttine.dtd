@@ -44,3 +44,6 @@
 	schreiben Sie eine E-Mail an thundertinesync@googlemail.com. Ich werde eine deutsche Kontonummer zurückschicken, an
 	die Sie einen kleinen Betrag überweisen können. Jede Spende ist willkommen, für mich ist der Gegenwert von zwei
 	Bier in Ihrer Stammkneipe in Ihrem Ort Anerkennung genug. Danke. ">
+
+<!ENTITY ttine.syncConfigTitle "Tine 2.0 Sync Konfiguration...">
+<!ENTITY ttine.syncButtonLabel "konfigurieren...">

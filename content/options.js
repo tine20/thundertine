@@ -22,18 +22,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   		.getService(Components.interfaces.nsIPrefService);
   prefs = prefs.getBranch("extensions.ttine.");
 
-  var deviceId = prefs.getCharPref('deviceId');
+  // if under Windows Button Cancel is pressed, remember pwd and config
+  var oldpwd = '';
+  var timerId = null;
 
-	// if under Windows Button Cancel is pressed, remember pwd and config
-	var oldpwd = '';
-	var oldConfig = { }
-
-  var ttine = { } 
+  var ttine = { }
   ttine.strings = window.opener.document.getElementById("ttine-strings");
-
+	
   function onopen() {
-	// save current values to restore it on cancel
-	oldConfig = config;
+	// read current config
+	config.read();
+
+	// add reference to global settings
+	config.getSyncConfig().folders = window.opener.config.getSyncConfig().folders;
+	
 	// get password and clear it in manager (to store it at close again)
 	var passwordManager = Components.classes["@mozilla.org/login-manager;1"]
 		.getService(Components.interfaces.nsILoginManager);
@@ -51,17 +53,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 					url, null, 'Tine 2.0 Active Sync', document.getElementById('user').value, 
 					logins[i].password, '', ''
 				); 
+				//devTools.writeMsg('options', 'onopen', 'remove password');
 				passwordManager.removeLogin(loginInfo);
-				config.setPwd('');
-				oldConfig.setPwd('');
-				document.getElementById('password').value = logins[i].password;
 				oldpwd = logins[i].password;
+				document.getElementById('password').value = oldpwd; 
+				config.setPwd('');
 				break;
 			}
 		}
 	}
 	// load contacts pane
-	localAbs();
+	localAbsMultiple();
 	remoteFolders();
   }
 
@@ -71,9 +73,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	First with true, sencond time with undefined!!
   */
   function onclose(ok) { 
-
+	var result = false;
+	
 	// linux close button or Windows OK Button pressed
-	if (document.getElementById('ThundertinePreferences').instantApply || ok) { 
+	if (document.getElementById('ThundertinePreferences').instantApply || ok) {
+		result = true;
 		var passwordManager = Components.classes["@mozilla.org/login-manager;1"]
 			.getService(Components.interfaces.nsILoginManager);
 		var url = 
@@ -89,23 +93,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		if ( document.getElementById('host').value != '' &&
 			document.getElementById('user').value != '' &&
 			document.getElementById('password').value ) {
+			//devTools.writeMsg('options', 'onclose', 'save password');
 			passwordManager.addLogin(loginInfo);
 			config.setPwd(document.getElementById('password').value);
+			config.pwdChanged = (document.getElementById('password').value != oldpwd);
 		}
-		// store (valid) folder settings
-		if (document.getElementById('localContactsFolder').value != null)
-			prefs.setCharPref('contactsLocalFolder', document.getElementById('localContactsFolder').value);
-		else
-			prefs.setCharPref('contactsLocalFolder', ''); 
-		if (document.getElementById('remoteContactsFolder').value != null)
-			prefs.setCharPref('contactsRemoteFolder', document.getElementById('remoteContactsFolder').value);
-		else {
-			prefs.setCharPref('contactsRemoteFolder', '');
-			config.folderSyncKey = 0;
-			config.folderIds = Array();
-			config.folderNames = Array();
-			config.folderTypes = Array();
-		} 
 	}
 	// Windows cancel pressed -> remember old password and settings
 	else if (ok==false) {
@@ -121,75 +113,365 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				url, null, 'Tine 2.0 Active Sync', prefs.getCharPref('user'), 
 				oldpwd, '', ''
 			); 
+			devTools.writeMsg('options', 'onclose', 'restore password');
 			passwordManager.addLogin(loginInfo);
-			oldConfig.setPwd(oldpwd);
-			oldpwd = ''; // prevent saving password twice
-		}
-		// old settings
-		config = oldConfig;
-	}
-	config.write();
-  }
-
-  function localAbs() {
-	while (document.getElementById('localContactsFolder').childNodes.length > 0)
-		document.getElementById('localContactsFolder').removeChild(document.getElementById('localContactsFolder').firstChild);
-	let abManager = Components.classes["@mozilla.org/abmanager;1"] 
-		.getService(Components.interfaces.nsIAbManager);
-	let allAddressBooks = abManager.directories;
-	while (allAddressBooks.hasMoreElements()) {  
-		let addressBook = allAddressBooks.getNext();
-		if (addressBook instanceof Components.interfaces.nsIAbDirectory && 
-			!addressBook.isRemote && !addressBook.isMailList && addressBook.fileName != 'history.mab') {
-			var ab = document.createElement('listitem');
-			ab.setAttribute('label', addressBook.dirName);
-			ab.setAttribute('value', addressBook.URI); 
-			document.getElementById('localContactsFolder').appendChild(ab);
-			if (prefs.getCharPref('contactsLocalFolder') == addressBook.URI)
-				document.getElementById('localContactsFolder').selectedItem = ab;
 		}
 	}
-	if(document.getElementById('localContactsFolder').selectedIndex < 0)
-		document.getElementById('localContactsFolder').selectedIndex = 0;
+
+	// send user selection and new config to caller (needs merge?) 
+	window.opener.ttine.lastUserConfigAction(result, (result ? JSON.parse(JSON.stringify(config)) : null));
   }
 
-  function remoteFolders() { 
-	while (document.getElementById('remoteContactsFolder').childNodes.length > 0)
-		document.getElementById('remoteContactsFolder').removeChild(document.getElementById('remoteContactsFolder').firstChild);
+  function localAbsMultiple() {
+	  	var list = document.getElementById('localContactsFolderMultiple');
+	  	
+		while (list.childNodes.length > 0) {
+			if (list.lastChild.tagName == 'listitem')
+				list.removeChild(list.lastChild);
+			else
+				break;
+		}
+		var addressbooks = config.getAbs();
+		for (var i=0; i<addressbooks.length; i++)
+			list.appendChild(newListItem(config.getAbSyncConfigByABook(addressbooks[i]), addressbooks[i].dirName, addressbooks[i].URI, '', ''));
+  }
+  
+  function remoteFolders() {
+	// overwrite connection settings
 	config.url = (document.getElementById('hostSsl').checked ? 'https://' : 'http://') + 
 		document.getElementById('host').value + '/Microsoft-Server-ActiveSync';
-	config.deviceType = (document.getElementById('iPhone').checked? 'iPhone' : 'ThunderTine');
 	config.user = document.getElementById('user').value;
 	config.setPwd(document.getElementById('password').value);
-	config.deviceId = deviceId; 
-	config.folderSyncKey = 0;
+	
+	// show remote folders (empty if not synced yet)
+	remoteFoldersFinish();
+	
+	// force syncing remote folders
 	if (config.minimumConfig())
 		sync.execute(Array('start', 'folderSync_Options', 'finish'));
   } 
 
   function remoteFoldersFinish() {
-	var remoteIds = folder.listFolderIds('Contacts'); 
-	var remoteNames = folder.listFolderNames('Contacts'); 
-	for (var i = 0; i < remoteNames.length; i++) {
-		var ab = document.createElement('listitem');
-		ab.setAttribute('label', remoteNames[i]);
-		ab.setAttribute('value', remoteIds[i]); 
-		document.getElementById('remoteContactsFolder').appendChild(ab);
-		if (prefs.getCharPref('contactsRemoteFolder') == remoteIds[i])
-			document.getElementById('remoteContactsFolder').selectedItem = ab;
-	}
-	if(document.getElementById('remoteContactsFolder').selectedIndex < 0)
-		document.getElementById('remoteContactsFolder').selectedIndex = 0;
+	// contacts
+	var folders = config.getFolders('contacts'); 
+
+  	var list = document.getElementById('localContactsFolderMultiple');
+
+  	for (var i=0; i<folders.length; i++) {
+  		var folder = folders[i];
+  		var listItem = getContactsListItem(folder.id);
+
+  		if (listItem != null) {
+  			listItem.childNodes[2].setAttribute('label', folder.name);
+  			listItem.childNodes[2].setAttribute('value', folder.id);
+  		} else {
+  			listItem = newListItem(null, '', '', folder.name, folder.id);
+			list.appendChild(listItem);
+  		}
+  	}
   }
 
-  function newAb() {
-	window.openDialog("chrome://messenger/content/addressbook/abAddressBookNameDialog.xul", "", "chrome,modal=yes,resizable=no,centerscreen", null);
-	localAbs();
+  function changeSyncConfig() {
+		var list = document.getElementById('localContactsFolderMultiple');
+		var listItem = list.selectedItem;
+		var selectItems = Array();
+
+		if (listItem == undefined)
+			return;
+		
+		// re-init object
+		var configOptions = { };
+		switch (document.getElementById("ThundertinePreferences").currentPane.id) {
+			case "paneThunderTineContacts":
+				configOptions.category = "Addressbook";
+				break;
+			default:
+				configOptions.category = null;
+				break;
+		}
+
+		var syncConfig = this.config.parseJSONFromString(listItem.value);
+		// new config
+		if (syncConfig == null) {
+			// emtpy Array
+			configOptions.selectItems = Array();
+			
+			// local selected
+			if (listItem.firstChild.getAttribute('label') != '') {
+				devTools.writeMsg('options', 'getContactsSelection', 'local target');
+				configOptions.selectedItem = "{ \"label\": \"" + listItem.firstChild.getAttribute('label') + "\", \"value\": \"" + listItem.firstChild.getAttribute('value') + "\" }";
+				configOptions.configure = 'local';
+				for (var i=0; i<list.childNodes.length; i++) {
+					if (list.childNodes[i].tagName == 'listitem' && list.childNodes[i].firstChild.getAttribute('label') == '') {
+						configOptions.selectItems.push("{ \"label\": \"" + list.childNodes[i].lastChild.getAttribute('label') + "\", \"value\": \"" + list.childNodes[i].lastChild.getAttribute('value') + "\" }");
+					}
+				}
+				dialog.open(configOptions);
+			// remote selected
+			} else {
+				devTools.writeMsg('options', 'getContactsSelection', 'remote target');
+				configOptions.selectedItem = "{ \"label\": \"" + listItem.lastChild.getAttribute('label') + "\", \"value\": \"" + listItem.lastChild.getAttribute('value') + "\" }";
+				configOptions.configure = 'remote';
+				for (var i=0; i<list.childNodes.length; i++) {
+					if (list.childNodes[i].tagName == 'listitem' && list.childNodes[i].lastChild.getAttribute('label') == '') {
+						configOptions.selectItems.push("{ \"label\": \"" + list.childNodes[i].firstChild.getAttribute('label') + "\", \"value\": \"" + list.childNodes[i].firstChild.getAttribute('value') + "\" }");
+					}
+				}
+				
+				// open dialog with list
+				if (configOptions.selectItems.length > 0)
+					dialog.open(configOptions);
+				else {
+					var addedAb = null;
+					
+					if ((addedAb = newAb()) != null) {
+						
+					}
+				}
+					
+			}
+		// modify existing config
+		} else {
+			// delete syncConfig
+			this.config.removeAbSyncConfig(syncConfig);
+			
+			// reinit addressbook
+			
+			// modify list
+			var remoteName = listItem.lastChild.getAttribute('label'), remoteId = listItem.lastChild.getAttribute('value');
+			var newItem = newListItem(null, '', '', remoteName, remoteId);
+			var cnt = list.childNodes.length;
+			var insertBeforeItem = null;
+			// sort unconfigured remote folders
+			for (var i=0; i<cnt; i++)
+				if (list.childNodes[i].tagName == 'listitem' && 
+					list.childNodes[i].value == '' &&
+					(list.childNodes[i].lastChild.getAttribute('label') > remoteName ||
+					(list.childNodes[i].lastChild.getAttribute('label') == remoteName && list.childNodes[i].lastChild.getAttribute('value') > remoteId)
+				)) {
+					insertBeforeItem = list.childNodes[i];
+					break;
+				}
+			list.insertBefore(newItem, insertBeforeItem);
+			
+			modifyListItem(listItem, null
+					, listItem.firstChild.getAttribute('label'), listItem.firstChild.getAttribute('value')
+					, '', ''
+			);
+		}
+  }
+  
+  function processUserSelection(selection) {
+	  	devTools.enter('options', 'processUserSelection', 'selection ' + selection);
+		var list = document.getElementById('localContactsFolderMultiple');
+		var listItem = list.selectedItem;
+
+		var syncConfig = this.config.parseJSONFromString(listItem.value);
+		// new config
+		if (syncConfig == null) {
+			var newSyncConfig = null;
+			var listItemMerge = {};
+			
+			// local selected
+			if (listItem.firstChild.getAttribute('value') != '') {
+				// step through unsynced remote nodes
+				for (var i=0; i<list.childNodes.length; i++) {
+					if (list.childNodes[i].tagName == 'listitem' && list.childNodes[i].firstChild.getAttribute('label') == '' && list.childNodes[i].lastChild.getAttribute('value') == selection) {
+						devTools.writeMsg('options', 'processUserSelection', 'local: ' + listItem.firstChild.getAttribute('label') + ' ' + list.childNodes[i].lastChild.getAttribute('label'));
+						listItemMerge.localItem = listItem; 
+						listItemMerge.remoteItem = list.childNodes[i];
+						break;
+					}
+				}
+			// remote selected
+			} else {
+				// step through unsynced local nodes
+				for (var i=0; i<list.childNodes.length; i++) {
+					if (list.childNodes[i].tagName == 'listitem' && list.childNodes[i].lastChild.getAttribute('label') == '' && list.childNodes[i].firstChild.getAttribute('value') == selection) {
+						devTools.writeMsg('options', 'processUserSelection', 'remote: ' + list.childNodes[i].firstChild.getAttribute('label') + ' ' + listItem.lastChild.getAttribute('label'));
+						listItemMerge.localItem = list.childNodes[i];
+						listItemMerge.remoteItem = listItem;
+						break;
+					}
+				}
+			}
+			
+			//devTools.writeMsg('options', 'processUserSelection', 'addAbSyncConfig');
+			if ((newSyncConfig = this.config.addAbSyncConfig(listItemMerge.localItem.firstChild.getAttribute('value'), listItemMerge.remoteItem.lastChild.getAttribute('value'))) != null) {
+				//devTools.writeMsg('options', 'processUserSelection', 'newSyncConfig ' + newSyncConfig);
+				modifyListItem(listItemMerge.localItem, newSyncConfig
+						, listItemMerge.localItem.firstChild.getAttribute('label'), listItemMerge.localItem.firstChild.getAttribute('value')
+						, listItemMerge.remoteItem.lastChild.getAttribute('label'), listItemMerge.remoteItem.lastChild.getAttribute('value')
+				);
+				list.removeChild(listItemMerge.remoteItem);
+			}
+		// modify existing config
+		} else {
+			alert('ask deconfig');
+		}
+
+		devTools.leave('options', 'processUserSelection');
+  }
+  
+  function newAb(dontOpenDialog) {
+	  var openDialog = (dontOpenDialog == true ? false : true);
+
+	  if (openDialog)
+		  window.openDialog("chrome://messenger/content/addressbook/abAddressBookNameDialog.xul", "", "chrome,modal,resizable=no,centerscreen", null);
+	  
+	  var list = document.getElementById('localContactsFolderMultiple');
+
+	  // search new book
+	  var abs = this.config.getAbs();
+	  for (var i=0; i<list.childNodes.length; i++) {
+		  if (list.childNodes[i].tagName != 'listitem')
+			  continue;
+		  
+		  // no more local abooks
+		  if (list.childNodes[i].getAttribute('value') == null)
+			  break;
+		  
+		  // remove known books from list
+		  for (var j=0; j<abs.length; j++)
+			  if (list.childNodes[i].firstChild.getAttribute('value') == abs[j].URI) {
+				  abs = abs.slice(0,j).concat(abs.slice(j+1));
+			  	  break;
+			  }
+	  }
+
+	  // no new abook
+	  if (abs.length == 0)
+		  return null;
+
+	  // return abook if only one new was found
+	  var result = (abs.length == 1 ? abs[0] : null);
+	  
+	  // add new books to list
+	  while (abs.length > 0) {
+		  var idx = -1, found = false;
+
+		  for (var i=0; i<list.childNodes.length; i++) {
+			  if (list.childNodes[i].tagName != 'listitem')
+				  continue;
+
+			  // no more local abooks
+			  if (list.childNodes[i].firstChild.getAttribute('label') == '')
+				  idx = i+1;
+			  // local abooks sorted by name
+			  else if (list.childNodes[i].firstChild.getAttribute('label') > abs[0].dirName)
+					  idx = i;
+			  // local abooks equal name sorted by uri
+			  else if (list.childNodes[i].firstChild.getAttribute('label') == abs[0].dirName && list.childNodes[i].firstChild.getAttribute('value') > abs[0].URI)
+				  idx = i;
+		  	 
+			  if (idx >= 0) {
+				  devTools.writeMsg('options', 'newAb', 'adding: ' + abs[0].dirName + ' ' + (idx+1) + '/' + list.childNodes.length);
+				  list.insertBefore(newListItem(null, abs[0].dirName, abs[0].URI, '', ''), (list.childNodes.length > idx ? list.childNodes[idx] : null));
+				  abs = abs.slice(1);
+				  found = true;
+				  break;
+			  }
+		  }
+		  // prevent endless loop
+		  if (!found) {
+			  alert('options.newAb: oops! didn\'t found position');
+			  break;
+		  }
+	  }
+	  
+	  return result;
   }
 
   function reInit() {
-	if (helper.ask(ttine.strings.getString('reinitializeFolder')))
-		ab.doClearExtraFields(document.getElementById('localContactsFolder').value);
+	switch (document.getElementById("ThundertinePreferences").currentPane.id) {
+		case "paneThunderTineContacts":
+			  var list = document.getElementById('localContactsFolderMultiple');
+			  var listItem = list.selectedItem;
+			  
+			  this.reInitAb(listItem.firstChild.getAttribute('value'));
+			break;
+	}
+  }
+  
+  function reInitAb(auri) {
+		if (helper.ask(ttine.strings.getString('reinitializeFolder')))
+			ab.doClearExtraFields(auri);
+  }
+  
+  function onListBoxSelection()
+  {
+		var list = document.getElementById('localContactsFolderMultiple');
+		var listItem = list.selectedItem;
+
+		var bSync = document.getElementById('toggleSync');
+		var bReInit = document.getElementById('reinitSync');
+
+		bSync.disabled = bReInit.disabled = (listItem == null);
+		if (listItem == null)
+			return;
+		
+		// unconfigured local addressbook
+		bReInit.disabled = !(listItem.firstChild.getAttribute('label') != '' && listItem.value == ''); 
   }
 
+// private helper functions
+  function getContactsListItem(remoteId) {
+		//devTools.enter('options', 'getContactsListItem', 'remoteId: ' + remoteId);
+		var list = document.getElementById('localContactsFolderMultiple');
+		
+		for (var i=0; i<list.childNodes.length; i++)
+			if (list.childNodes[i].tagName == 'listitem') {
+				var listItem = list.childNodes[i];
+				var syncConfig = this.config.parseJSONFromString(listItem.value);
+				// known config or listed remote folder 
+				if ((syncConfig != null && syncConfig.remote == remoteId) || listItem.lastChild.getAttribute('value') == remoteId) {
+					return listItem;
+				}
+			}
 
+		//devTools.leave('options', 'getContactsListItem', 'result: ' + result);
+		return null;
+  }
+
+  function newListItem(config, lLabel, lValue, rLabel, rValue) {
+		var ab = document.createElement('listitem');
+		
+		if (config != null)
+			ab.setAttribute('value', JSON.stringify(config));
+		
+		var lc = ab.appendChild(document.createElement('listcell'));
+		lc.setAttribute('label', lLabel);
+		if (lValue != '')
+			lc.setAttribute('value', lValue);
+		
+		lc = ab.appendChild(document.createElement('listcell'));
+		if (config != null)
+			lc.setAttribute('label', 'ja');
+
+		lc = ab.appendChild(document.createElement('listcell'));
+		lc.setAttribute('label', rLabel);
+		if (rValue != '')
+			lc.setAttribute('value', rValue);
+		
+		return ab;
+  }
+
+  function modifyListItem(listItem, config, lLabel, lValue, rLabel, rValue) {
+		var ab = listItem;
+	
+		ab.setAttribute('value', (config != null ? JSON.stringify(config) : null));
+		
+		var lc = ab.childNodes[0];
+		lc.setAttribute('label', lLabel);
+		lc.setAttribute('value', (lValue != '' ? lValue : null));
+		
+		lc = ab.childNodes[1];
+		lc.setAttribute('label', (config != null ? 'ja' : ''));
+
+		lc = ab.childNodes[2];
+		lc.setAttribute('label', rLabel);
+		lc.setAttribute('value', (rValue != '' ? rValue : null));
+		
+		// button state
+		onListBoxSelection();
+  }

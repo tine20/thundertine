@@ -43,3 +43,6 @@
 	I will give you a german bank account number to which you can donate a little amount. 
 	Any amount is welcome - for me it is totally apropriate if you donate as much as two beers 
 	approximatly cost in your favourite pub at your place. Thank you.">
+
+<!ENTITY ttine.syncConfigTitle "Tine 2.0 Sync Configuration...">
+<!ENTITY ttine.syncButtonLabel "configure...">

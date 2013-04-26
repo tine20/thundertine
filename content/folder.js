@@ -27,123 +27,148 @@ var folder = {
    */
 
   update: function() {
+	devTools.enter('folder', 'update');
+	var folders = config.getFolders();
+	
 	// ask folders
 	var folderRequest = '<?xml version="1.0" encoding="UTF-8"?>'+"\n"+
 		'<FolderHierarchy_FolderSync><FolderHierarchy_SyncKey>' + 
-		config.folderSyncKey + 
+		(folders.syncKey == undefined ? 0 : folders.syncKey) + 
 		'</FolderHierarchy_SyncKey></FolderHierarchy_FolderSync>';
 	wbxml.httpRequest(folderRequest, 'FolderSync'); 
+	devTools.leave('folder', 'update');
   }, 
 
   updateFinish: function(req) { 
+	devTools.enter('folder', 'updateFinish');
+	var syncConfig = config.getSyncConfig();
+	var folders = config.getFolders();
+	
 	var response = wbxml.doXml(req.responseText); 
-	if (response == false)
+	if (response == false) {
+		devTools.leave('folder', 'updateFinish', 'response == false');
 		return false;
-	if (config.folderSyncKey == 0) {
-		config.folderIds = Array();
-		config.folderNames = Array();
-		config.folderTypes = Array(); 
-	} 
+	}
+
 	for (var i = 0; i < response.firstChild.childNodes.length; i++) {
+		var currNode = response.firstChild.childNodes[i];
 		// status
-		if (response.firstChild.childNodes[i].nodeName == 'Status' && response.firstChild.childNodes[i].firstChild.nodeValue != '1') {
-			helper.prompt(errortxt.folder['code'+response.firstChild.childNodes[i].firstChild.nodeValue]);
+		if (response.firstChild.childNodes[i].nodeName == 'Status' && currNode.firstChild.nodeValue != '1') {
+			helper.prompt(errortxt.folder['code'+currNode.firstChild.nodeValue]);
+			devTools.leave('folder', 'updateFinish', 'status: ' + currNode.firstChild.nodeValue);
 			return false;
 		}
-		else if (response.firstChild.childNodes[i].nodeName == 'FolderHierarchy_SyncKey')
-			config.folderSyncKey = response.firstChild.childNodes[i].firstChild.nodeValue;
-		else if (response.firstChild.childNodes[i].nodeName == 'FolderHierarchy_Changes' && response.firstChild.childNodes[i].childNodes.length > 0) { 
-			for (var c=0; c<response.firstChild.childNodes[i].childNodes.length; c++) {
-				var node = response.firstChild.childNodes[i].childNodes[c];
-				var tag = node.nodeName; 
-				if (tag == 'FolderHierarchy_Add') { 
-					for (var f=0; f<node.childNodes.length; f++) { 
-						var subtag_name = node.childNodes[f].nodeName;
-						// if FolderHierarchy_DisplayName starts with '&' it's empty
-						if ((subtag_name=='FolderHierarchy_DisplayName') && (node.childNodes[f].firstChild == null))
-							var subtag_value = '???';
-						else
-							var subtag_value = node.childNodes[f].firstChild.nodeValue;						
-						if (subtag_name == 'FolderHierarchy_ServerId')
-							config.folderIds.push(subtag_value);
-						else if (subtag_name == 'FolderHierarchy_DisplayName') 
-							config.folderNames.push(subtag_value);
-						else if (subtag_name == 'FolderHierarchy_Type')
-							config.folderTypes.push(subtag_value); 
-					}
+		else if (currNode.nodeName == 'FolderHierarchy_SyncKey')
+			folders.syncKey = currNode.firstChild.nodeValue;
+		else if (currNode.nodeName == 'FolderHierarchy_Changes' && currNode.childNodes.length > 0) {
+			var cnt = response.firstChild.childNodes[i].childNodes.length;
+
+			for (var c=0; c<cnt; c++) {
+				var node = currNode.childNodes[c];
+				var action = null;
+				
+				switch (node.nodeName) {
+					case 'FolderHierarchy_Add':
+					case 'FolderHierarchy_Update':
+						action = 'add';
+						break;
+					case 'FolderHierarchy_Delete':
+						action = 'delete';
+						break;
+					default:
+						continue;
+						break;
 				}
-				else if (tag == 'FolderHierarchy_Update') {
-					for (var f=0; f<node.childNodes.length; f++) {
-						var subtag_name = node.childNodes[f].nodeName;
-						// if FolderHierarchy_DisplayName starts with '&' it's empty
-						if ((subtag_name=='FolderHierarchy_DisplayName') && (node.childNodes[f].firstChild == null))
-							var subtag_value = '???';
-						else
-							var subtag_value = node.childNodes[f].firstChild.nodeValue;
-						if (subtag_name == 'FolderHierarchy_ServerId')
-							var folder_id = subtag_value;
-						else if (subtag_name == 'FolderHierarchy_DisplayName')
-							var folder_name = subtag_value;
-					}
-					config.folderNames[config.folderIds.indexOf(folder_id)] = folder_name;
+				
+				if (action == 'add') {
+					var aCnt = node.childNodes.length;
+					var serverId = null, serverName = null, serverType = null, serverParent = null;
 					
-				}
-				else if (tag == 'FolderHierarchy_Delete') {
-					for (var f=0; f<node.childNodes.length; f++) {
-						var subtag_name = node.childNodes[f].nodeName;
-						// if FolderHierarchy_DisplayName starts with '&' it's empty
-						if ((subtag_name=='FolderHierarchy_DisplayName') && (node.childNodes[f].firstChild == null))
-							var subtag_value = '???';
-						else
-							var subtag_value = node.childNodes[f].firstChild.nodeValue;
-						if (subtag_name == 'FolderHierarchy_ServerId') {
-							config.folderNames.splice(config.folderIds.indexOf(subtag_value), 1);
-							config.folderTypes.splice(config.folderIds.indexOf(subtag_value), 1);
-							config.folderIds.splice(config.folderIds.indexOf(subtag_value), 1);
+					for (var f=0; f<aCnt; f++) { 
+						var subtag_value = node.childNodes[f].firstChild.nodeValue;
+						
+						switch (node.childNodes[f].nodeName) {
+							case 'FolderHierarchy_ServerId':
+								serverId = subtag_value;
+								break;
+							case 'FolderHierarchy_DisplayName': 
+								serverName = subtag_value;
+								break;
+							case 'FolderHierarchy_Type':
+								serverType = subtag_value;
+								break;
+							case 'FolderHierarchy_ParentId':
+								serverParent = (subtag_value != null && subtag_value != '0' ? subtag_value : null);
+								break;
 						}
 					}
+
+					if (serverId != null && serverName != null && serverType != null) {
+						var type = null, subType = null, special = null;
+
+						switch (serverType) {
+						 	// email
+							case '2':
+							case '4':
+							case '5':
+							case '12':
+								type = 'email';
+								special = (serverType == 2 ? 'inbox' : (serverType == 4 ? 'trash' : (serverType == 5 ? 'send' : null))); 
+								break;
+							// contacts
+							case '9':
+							case '14':
+								type = 'contacts';
+								subType = (serverType == 9 ? 'private' : (serverType == 14 ? 'shared' : null)); 
+								break;
+							// calendars
+							case '8':
+								type = 'calendars';
+								break;
+							// tasks
+							case '7': 
+								type = 'tasks';
+								break;
+							// others
+							default: 
+								devTools.writeMsg('folders', 'updateFinish', 'unkonwn folder type: ' + serverType + '\n\n' + wbxml.domStr(node));
+								break;
+						}
+
+						if (type != null) {
+							var jsonStr = '{ "name": "' + serverName + '", "id": "' + serverId + '"';
+							jsonStr += (serverParent != null ? ', "parent": "' + serverParent + '"' : '');
+							jsonStr += (subType != null ? ', "type": "' + subType + '"' : '');
+							jsonStr += ' }';
+	
+							//config.addFolder(syncConfig, type, JSON.parse(jsonStr));
+							config.addFolder(type, JSON.parse(jsonStr));
+						}
+					}
+				}
+				
+				if (action == 'delete') {
+					var aCnt = node.childNodes.length;
+					var serverId = null;
+					
+					for (var f=0; f<aCnt; f++) { 
+						var subtag_value = node.childNodes[f].firstChild.nodeValue;
+						
+						switch (node.childNodes[f].nodeName) {
+							case 'FolderHierarchy_ServerId':
+								serverId = subtag_value;
+								break;
+						}
+					}
+
+					if (serverId != null)
+						config.removeFolder(serverId);
 				}
 			}
 		} 
 	}
+	
+	devTools.leave('folder', 'updateFinish', 'folders: contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length);
 	return true;
-  },
-
-  /*
-   * before sync make sure folder still exists
-   */
-  stillExists: function() {
-	if (config.folderIds.indexOf(config.contactsRemoteFolder) >= 0)
-		return true;
-	else
-		return false;
-  }, 
-
-  /*
-   * preference GUI needs this
-   */
-  listFolderIds: function(type) {
-	var resArr = Array();
-	for (i in config.folderIds) {
-		if(type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14))
-			resArr.push(config.folderIds[i]);
-	}
-	if (resArr.length > 0)
-		return resArr;		
-	else
-		return false;		
-  },
-
-  listFolderNames: function(type) {
-	var resArr = Array();
-	for (i in config.folderIds) {
-		if(type=='Contacts' && (config.folderTypes[i]==9 || config.folderTypes[i]==14))
-			resArr.push(config.folderNames[i]);
-	}
-	if (resArr.length > 0)
-		return resArr;		
-	else
-		return false;
   }
-
 }
