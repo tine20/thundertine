@@ -8,8 +8,8 @@
 	minheight="480"
 	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
 	onload="onopen();"
-	ondialogaccept="onclose(true);"
-	ondialogcancel="onclose(false);">
+	ondialogaccept="return onclose(true);"
+	ondialogcancel="return onclose(false);">
 
   <prefpane id="paneThunderTineHost" label="&ttine.prefwindowToolbarHost;" image="chrome://ttine/skin/tine.png">
 	<preferences>

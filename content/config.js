@@ -187,12 +187,12 @@ var config = {
 		return null;
 	},
 
-	addAbSyncConfig : function(abook, srvdir) {
+	addAbSyncConfig : function(abUri, folderId) {
 		var syncConfig = this.getSyncConfig();
 		var result = {};
 		
-		result.local = abook;
-		result.remote = srvdir;
+		result.local = abUri;
+		result.remote = folderId;
 		
 		syncConfig.contacts.configured.push(result);
 		
@@ -252,6 +252,21 @@ var config = {
 			}
 	},
 		
+	addSyncInfos: function() {
+		var syncConfig = config.getSyncConfig();
+		
+		if (syncConfig != undefined) {
+			var start = (syncConfig.lastSyncTime == undefined ? true : (syncConfig.lastSyncDuration != undefined ? true : false));
+
+			var now = Date.now();
+			syncConfig.lastSyncDuration = (start ? undefined : (now - syncConfig.lastSyncTime)); 
+			syncConfig.lastSyncTime = Date.now();
+			
+			if (!start)
+				devTools.writeMsg('config', 'addSyncInfos', 'lastCollectionSync: ' + (syncConfig.lastSyncDuration/1000) + ' s');
+		}  
+	},
+
 	getSyncConfig : function() {
 		if (config.jsonSyncConfig == null) {
 			var prefs = Components.classes["@mozilla.org/preferences-service;1"]
@@ -274,35 +289,29 @@ var config = {
 		var jsonConfigSave = JSON.parse(JSON.stringify(config.getSyncConfig()));
 		
 		// remove temporary stuff
-		// folders
-		if (jsonConfigSave.folders != undefined)
-			jsonConfigSave.folders = undefined;
-		// contacts
-		for (var i=0; i<jsonConfigSave.contacts.configured.length; i++) {
-			if (jsonConfigSave.contacts.configured[i].syncKey != undefined)
-				jsonConfigSave.contacts.configured[i].syncKey = undefined;
-			if (jsonConfigSave.contacts.configured[i].syncStatus != undefined)
-				jsonConfigSave.contacts.configured[i].syncStatus = undefined;
-			if (jsonConfigSave.contacts.configured[i].managedCards != undefined)
-				jsonConfigSave.contacts.configured[i].managedCards = undefined;
-		}
-		// calendars
-		for (var i=0; i<jsonConfigSave.calendars.configured.length; i++) {
-			if (jsonConfigSave.calendars.configured[i].syncKey != undefined)
-				jsonConfigSave.calendars.configured[i].syncKey = undefined;
-			if (jsonConfigSave.calendars.configured[i].syncStatus != undefined)
-				jsonConfigSave.calendars.configured[i].syncStatus = undefined;
-			if (jsonConfigSave.calendars.configured[i].managedCards != undefined)
-				jsonConfigSave.calendars.configured[i].managedCards = undefined;
-		}
-		// task
-		for (var i=0; i<jsonConfigSave.tasks.configured.length; i++) {
-			if (jsonConfigSave.tasks.configured[i].syncKey != undefined)
-				jsonConfigSave.tasks.configured[i].syncKey = undefined;
-			if (jsonConfigSave.tasks.configured[i].syncStatus != undefined)
-				jsonConfigSave.tasks.configured[i].syncStatus = undefined;
-			if (jsonConfigSave.tasks.configured[i].managedCards != undefined)
-				jsonConfigSave.tasks.configured[i].managedCards = undefined;
+		// list of properties
+		var configProps = ['folders', 'lastSyncTime', 'lastSyncDuration', 'lastSyncStatus'];
+		for (var idx in configProps)
+			if (jsonConfigSave.hasOwnProperty(configProps[idx]))
+				jsonConfigSave[configProps[idx]] = undefined;
+
+		// list of categories
+		var folderTypes = ['contacts', 'calendars', 'tasks'];
+		// list of properties per category
+		var folderProps = ['syncKey', 'syncStatus', 'managedCards'];
+		for (var idx in folderTypes) {
+			var folderType = folderTypes[idx];
+			var folders = jsonConfigSave[folderType].configured;
+
+			// for each element
+			for (var i=0; i<folders.length; i++) {
+				var folder = folders[i];
+				for (var pdx in folderProps) {
+					var folderProp = folderProps[pdx];
+					if (folder.hasOwnProperty(folderProp))
+						folder[folderProp] = undefined;
+				}
+			}
 		}
 		
 		// write
@@ -314,6 +323,19 @@ var config = {
 		prefs.setCharPref('jsonSyncConfig', JSON.stringify(jsonConfigSave));
 	},
 	
+	mergeSyncConfig: function(newSyncConfig, connectModified) {
+		devTools.enter('config', 'mergeSyncConfig', 'reset: ' + connectModified);
+		if (connectModified == true) {
+			
+		} else {
+			this.mergeFolders(newSyncConfig.folders);
+			this.mergeAbSyncConfig(newSyncConfig.contacts.configured);
+		}
+		
+		this.saveSyncConfig();
+		devTools.leave('config', 'mergeSyncConfig');
+	},
+		
 	localAbsCheck: function (syncConfig) {
 		devTools.writeMsg('config', 'localAbsCheck', 'abSyncConfigs: ' + syncConfig.contacts.configured.length);
 		var i = 0;
@@ -350,27 +372,29 @@ var config = {
 		}
 	},
 	
+	getFolder: function(folderType, remoteId) {
+		var folders = this.getFolders(folderType);
+		var result = null;
+
+		var cnt = folders.length;
+		for (var i=0; i<cnt; i++) {
+			if (folders[i].id == remoteId) {
+				result = folders[i];
+				break;
+			}
+		}
+		
+		return result;
+	},
+	
 	getFolders: function(folderType) {
 		var syncConfig = this.getSyncConfig();
 
 		if (syncConfig.folders == undefined)
 			this.initFolders(syncConfig);
-		
+
 		if (folderType != undefined)
-			switch (folderType) {
-				case 'contacts':
-					return syncConfig.folders.contacts.sort(this.folderSortFunction);
-					break;
-				case 'calendars':
-					return syncConfig.folders.calendars.sort(this.folderSortFunction);
-					break;
-				case 'tasks':
-					return syncConfig.folders.tasks.sort(this.folderSortFunction);
-					break;
-				default:
-					return null;
-					break;
-			}
+			return (syncConfig.folders[folderType] != undefined ? syncConfig.folders[folderType] : null);
 
 		return syncConfig.folders; // return the whole object
 	},
@@ -402,43 +426,85 @@ var config = {
 	},
 	
 	removeFolder: function(folderId) {
-		var folders = this.getFolders();
+		devTools.leave('config', 'removeFolder', 'folder ' + folderId);
+		var folderTypes = ['contacts', 'calendars', 'tasks'];
+		
+		for (var idx in folderTypes) {
+			var folderType = folderTypes[idx];
+			var folders = this.getFolders(folderType);
+			devTools.writeMsg('config', 'removeFolder', 'folderType ' + folderType + ' ' + folders.length);
 
-		// contacts
-		var subFolders = folders.contacts;
-		var cnt = subFolders.length;
-		for (var i=0; i<cnt; i++) {
-			if (subFolders.id == folderId) {
-				subFolders.splice(i, 1);
-				return true;
-			}
-		}
-		// calendars
-		subFolders = folders.calendars;
-		cnt = subFolders.length;
-		for (var i=0; i<cnt; i++) {
-			if (subFolders.id == folderId) {
-				subFolders.splice(i, 1);
-				return true;
-			}
-		}
-		// tasks
-		subFolders = folders.tasks;
-		cnt = subFolders.length;
-		for (var i=0; i<cnt; i++) {
-			if (subFolders.id == folderId) {
-				subFolders.splice(i, 1);
-				return true;
+			var cnt = folders.length;
+			for (var i=0; i<cnt; i++) {
+				if (folders[i].id == folderId) {
+					folders.splice(i, 1);
+					devTools.leave('config', 'removeFolder', 'id: ' + folderId);
+					return true;
+				}
 			}
 		}
 
 		return false;
+		devTools.leave('config', 'mergeFolders', 'folders: contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length);
+	},
+	
+	mergeFolders: function(paramNewFolders) {
+		var folderTypes = ['contacts', 'calendars', 'tasks'];
+		
+		for (var idx in folderTypes) {
+			var folderType = folderTypes[idx];
+			var folders = this.getFolders(folderType);
+			var newFolders = paramNewFolders[folderType];
+			
+			if (newFolders != undefined) {
+				var cnt = newFolders.length; 
+				
+				// add or update
+				for (var i=0; i<cnt; i++) {
+					var j=0;
+					while (folders.length > j) {
+						// update existing
+						if (folders[j].id == newFolders[i].id) {
+							folders[j].name = newFolders[i].name;
+							break;
+						}
+						j += 1;
+					}
+					
+					// not found, add
+					if (j == folders.length)
+						folders.push(JSON.parse(JSON.stringify(newFolders[i])));
+				}
+				// delete
+				var i = 0;
+				while (folders.length > i) {
+					var j = 0;
+					while (newFolders.length > j) {
+						if (newFolders[j].id == folders[i].id) {
+							break;
+						}
+						j += 1;
+					}
+					
+					// found
+					if (j < newFolders.length)
+						i += 1;
+					// not found
+					else
+						folders.splice(i, 1);
+				}
+			}
+		}
+		folders = this.getFolders();
+		folders.syncKey = paramNewFolders.syncKey;
+		
+		devTools.leave('config', 'mergeFolders', 'folders: syncKey ' + folders.syncKey + ', contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length);
 	},
 	
 	parseJSONFromString : function (jsonString) {
 		var result = null;
 		
-		if (jsonString == null || jsonString == "")
+		if (jsonString == undefined || jsonString == null || jsonString == '')
 			return result;
 		
 		try {

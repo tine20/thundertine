@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	// read current config
 	config.read();
 
-	// add reference to global settings
+	// override folders reference with global cached syncConfig folders
 	config.getSyncConfig().folders = window.opener.config.getSyncConfig().folders;
 	
 	// get password and clear it in manager (to store it at close again)
@@ -53,7 +53,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 					url, null, 'Tine 2.0 Active Sync', document.getElementById('user').value, 
 					logins[i].password, '', ''
 				); 
-				//devTools.writeMsg('options', 'onopen', 'remove password');
 				passwordManager.removeLogin(loginInfo);
 				oldpwd = logins[i].password;
 				document.getElementById('password').value = oldpwd; 
@@ -63,7 +62,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		}
 	}
 	// load contacts pane
-	localAbsMultiple();
+	localAbs();
 	remoteFolders();
   }
 
@@ -74,6 +73,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   */
   function onclose(ok) { 
 	var result = false;
+	
+	// deny option dialog close, until folder sync is pending
+	var folders = config.getFolders();
+	if (folders.lastSyncDuration == undefined) {
+		var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+        	.getService(Components.interfaces.nsIPromptService);
+
+		promptService.alert(window, ttine.strings.getString("messageTitle"), ttine.strings.getString('foldersSyncPending'));
+		return result;
+	}
 	
 	// linux close button or Windows OK Button pressed
 	if (document.getElementById('ThundertinePreferences').instantApply || ok) {
@@ -89,11 +98,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			url, null, 'Tine 2.0 Active Sync', document.getElementById('user').value, 
 			document.getElementById('password').value, '', ''
 		);
+
 		// if not empty -> store password
-		if ( document.getElementById('host').value != '' &&
-			document.getElementById('user').value != '' &&
+		if ( document.getElementById('host').value != '' && 
+				document.getElementById('user').value != '' &&
 			document.getElementById('password').value ) {
-			//devTools.writeMsg('options', 'onclose', 'save password');
 			passwordManager.addLogin(loginInfo);
 			config.setPwd(document.getElementById('password').value);
 			config.pwdChanged = (document.getElementById('password').value != oldpwd);
@@ -113,17 +122,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				url, null, 'Tine 2.0 Active Sync', prefs.getCharPref('user'), 
 				oldpwd, '', ''
 			); 
-			devTools.writeMsg('options', 'onclose', 'restore password');
 			passwordManager.addLogin(loginInfo);
 		}
 	}
 
-	// send user selection and new config to caller (needs merge?) 
-	window.opener.ttine.lastUserConfigAction(result, (result ? JSON.parse(JSON.stringify(config)) : null));
+	// apply modified syncConfig to callee (needs to be merged) 
+	window.opener.ttine.optionsResultApplyCallback(result, JSON.parse(JSON.stringify(config)));
   }
 
-  function localAbsMultiple() {
-	  	var list = document.getElementById('localContactsFolderMultiple');
+  function localAbs() {
+	  	var list = getContactsList();
 	  	
 		while (list.childNodes.length > 0) {
 			if (list.lastChild.tagName == 'listitem')
@@ -142,7 +150,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		document.getElementById('host').value + '/Microsoft-Server-ActiveSync';
 	config.user = document.getElementById('user').value;
 	config.setPwd(document.getElementById('password').value);
-	
 	// show remote folders (empty if not synced yet)
 	remoteFoldersFinish();
 	
@@ -153,28 +160,51 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
   function remoteFoldersFinish() {
 	// contacts
-	var folders = config.getFolders('contacts'); 
+	folders = config.getFolders('contacts');
+  	var list = getContactsList();
 
-  	var list = document.getElementById('localContactsFolderMultiple');
-
-  	for (var i=0; i<folders.length; i++) {
+  	// add or update listitem
+  	var cnt = folders.length;
+  	for (var i=0; i<cnt; i++) {
   		var folder = folders[i];
   		var listItem = getContactsListItem(folder.id);
 
   		if (listItem != null) {
-  			listItem.childNodes[2].setAttribute('label', folder.name);
-  			listItem.childNodes[2].setAttribute('value', folder.id);
+  			listItem.lastChild.setAttribute('label', folder.name);
+  			listItem.lastChild.setAttribute('value', folder.id);
   		} else {
   			listItem = newListItem(null, '', '', folder.name, folder.id);
 			list.appendChild(listItem);
   		}
   	}
+  	// delete listitem
+  	cnt = list.childNodes.length;
+	for (var i=0; i<cnt; i++)
+		if (list.childNodes[i].tagName == 'listitem') {
+			var listItem = list.childNodes[i];
+			var syncConfig = this.config.parseJSONFromString(listItem.value);
+			var remote = listItem.lastChild.getAttribute('value');
+
+			if (remote == undefined || remote == null || remote == '')
+				continue;
+			
+			// found deleted folder
+			if (remote != null && config.getFolder('contacts', remote) == null) {
+				// deconfigure required
+				if (syncConfig != null) {
+					// toDo delete/re-init abook
+					config.removeAbSyncConfig(syncConfig);
+				}
+				list.removeChild(listItem);
+			}
+		}
+	return null;
   }
 
   function changeSyncConfig() {
-		var list = document.getElementById('localContactsFolderMultiple');
+		var list = getContactsList();
 		var listItem = list.selectedItem;
-		var selectItems = Array();
+		//var selectItems = Array();
 
 		if (listItem == undefined)
 			return;
@@ -198,7 +228,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			
 			// local selected
 			if (listItem.firstChild.getAttribute('label') != '') {
-				devTools.writeMsg('options', 'getContactsSelection', 'local target');
+				//devTools.writeMsg('options', 'getContactsSelection', 'local target');
 				configOptions.selectedItem = "{ \"label\": \"" + listItem.firstChild.getAttribute('label') + "\", \"value\": \"" + listItem.firstChild.getAttribute('value') + "\" }";
 				configOptions.configure = 'local';
 				for (var i=0; i<list.childNodes.length; i++) {
@@ -209,7 +239,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				dialog.open(configOptions);
 			// remote selected
 			} else {
-				devTools.writeMsg('options', 'getContactsSelection', 'remote target');
+				//devTools.writeMsg('options', 'getContactsSelection', 'remote target');
 				configOptions.selectedItem = "{ \"label\": \"" + listItem.lastChild.getAttribute('label') + "\", \"value\": \"" + listItem.lastChild.getAttribute('value') + "\" }";
 				configOptions.configure = 'remote';
 				for (var i=0; i<list.childNodes.length; i++) {
@@ -225,7 +255,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 					var addedAb = null;
 					
 					if ((addedAb = newAb()) != null) {
-						
+						// toDo
 					}
 				}
 					
@@ -262,8 +292,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
   
   function processUserSelection(selection) {
-	  	devTools.enter('options', 'processUserSelection', 'selection ' + selection);
-		var list = document.getElementById('localContactsFolderMultiple');
+	  	//devTools.enter('options', 'processUserSelection', 'selection ' + selection);
+		var list = getContactsList();
 		var listItem = list.selectedItem;
 
 		var syncConfig = this.config.parseJSONFromString(listItem.value);
@@ -277,7 +307,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				// step through unsynced remote nodes
 				for (var i=0; i<list.childNodes.length; i++) {
 					if (list.childNodes[i].tagName == 'listitem' && list.childNodes[i].firstChild.getAttribute('label') == '' && list.childNodes[i].lastChild.getAttribute('value') == selection) {
-						devTools.writeMsg('options', 'processUserSelection', 'local: ' + listItem.firstChild.getAttribute('label') + ' ' + list.childNodes[i].lastChild.getAttribute('label'));
+						//devTools.writeMsg('options', 'processUserSelection', 'local: ' + listItem.firstChild.getAttribute('label') + ' ' + list.childNodes[i].lastChild.getAttribute('label'));
 						listItemMerge.localItem = listItem; 
 						listItemMerge.remoteItem = list.childNodes[i];
 						break;
@@ -288,7 +318,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				// step through unsynced local nodes
 				for (var i=0; i<list.childNodes.length; i++) {
 					if (list.childNodes[i].tagName == 'listitem' && list.childNodes[i].lastChild.getAttribute('label') == '' && list.childNodes[i].firstChild.getAttribute('value') == selection) {
-						devTools.writeMsg('options', 'processUserSelection', 'remote: ' + list.childNodes[i].firstChild.getAttribute('label') + ' ' + listItem.lastChild.getAttribute('label'));
+						//devTools.writeMsg('options', 'processUserSelection', 'remote: ' + list.childNodes[i].firstChild.getAttribute('label') + ' ' + listItem.lastChild.getAttribute('label'));
 						listItemMerge.localItem = list.childNodes[i];
 						listItemMerge.remoteItem = listItem;
 						break;
@@ -310,7 +340,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			alert('ask deconfig');
 		}
 
-		devTools.leave('options', 'processUserSelection');
+		//devTools.leave('options', 'processUserSelection');
   }
   
   function newAb(dontOpenDialog) {
@@ -319,7 +349,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	  if (openDialog)
 		  window.openDialog("chrome://messenger/content/addressbook/abAddressBookNameDialog.xul", "", "chrome,modal,resizable=no,centerscreen", null);
 	  
-	  var list = document.getElementById('localContactsFolderMultiple');
+	  var list = getContactsList();
 
 	  // search new book
 	  var abs = this.config.getAbs();
@@ -365,7 +395,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				  idx = i;
 		  	 
 			  if (idx >= 0) {
-				  devTools.writeMsg('options', 'newAb', 'adding: ' + abs[0].dirName + ' ' + (idx+1) + '/' + list.childNodes.length);
+				  //devTools.writeMsg('options', 'newAb', 'adding: ' + abs[0].dirName + ' ' + (idx+1) + '/' + list.childNodes.length);
 				  list.insertBefore(newListItem(null, abs[0].dirName, abs[0].URI, '', ''), (list.childNodes.length > idx ? list.childNodes[idx] : null));
 				  abs = abs.slice(1);
 				  found = true;
@@ -385,7 +415,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   function reInit() {
 	switch (document.getElementById("ThundertinePreferences").currentPane.id) {
 		case "paneThunderTineContacts":
-			  var list = document.getElementById('localContactsFolderMultiple');
+			  var list = getContactsList();
 			  var listItem = list.selectedItem;
 			  
 			  this.reInitAb(listItem.firstChild.getAttribute('value'));
@@ -400,7 +430,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   
   function onListBoxSelection()
   {
-		var list = document.getElementById('localContactsFolderMultiple');
+		var list = getContactsList();
 		var listItem = list.selectedItem;
 
 		var bSync = document.getElementById('toggleSync');
@@ -415,22 +445,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
 
 // private helper functions
+  function getContactsList() {
+	  return document.getElementById('localContactsFolderMultiple');
+  }
+  
   function getContactsListItem(remoteId) {
-		//devTools.enter('options', 'getContactsListItem', 'remoteId: ' + remoteId);
-		var list = document.getElementById('localContactsFolderMultiple');
+		var list = getContactsList();
+		var result = null;
 		
-		for (var i=0; i<list.childNodes.length; i++)
+		var cnt = list.childNodes.length;
+		for (var i=0; i<cnt; i++)
 			if (list.childNodes[i].tagName == 'listitem') {
 				var listItem = list.childNodes[i];
 				var syncConfig = this.config.parseJSONFromString(listItem.value);
 				// known config or listed remote folder 
-				if ((syncConfig != null && syncConfig.remote == remoteId) || listItem.lastChild.getAttribute('value') == remoteId) {
-					return listItem;
+				if ((syncConfig != null ? syncConfig.remote : listItem.lastChild.getAttribute('value')) == remoteId) {
+					result = listItem;
+					break;
 				}
 			}
 
-		//devTools.leave('options', 'getContactsListItem', 'result: ' + result);
-		return null;
+//		devTools.writeMsg('options', 'getContactsListItem', 'remoteId: ' + remoteId + ', result: ' + result + (result != null ? ' ' + result.value : ''));
+		return result;
   }
 
   function newListItem(config, lLabel, lValue, rLabel, rValue) {
@@ -459,7 +495,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   function modifyListItem(listItem, config, lLabel, lValue, rLabel, rValue) {
 		var ab = listItem;
 	
-		ab.setAttribute('value', (config != null ? JSON.stringify(config) : null));
+		ab.setAttribute('value', (config != null ? JSON.stringify(config) : ''));
 		
 		var lc = ab.childNodes[0];
 		lc.setAttribute('label', lLabel);

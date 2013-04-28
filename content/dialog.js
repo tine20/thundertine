@@ -18,13 +18,10 @@
 	  },
 	  
 	  onOpen: function() {
-		  devTools.enter('dialog', 'onOpen');
 		  var dialogSelectOptions = this.getSelectOptions();
-		  
-		  this.reset();
-		  
 		  var configOptions = window.arguments[0];
-		  devTools.writeMsg('dialog', 'onOpen', 'category ' + configOptions.category);
+
+		  this.reset();
 		  
 		  var ttine = window.opener.ttine;
 
@@ -50,7 +47,7 @@
 			  }
 			  // prepare dialog
 			  if (configOptions.configure == "local") {
-				  var ab = config.getAbByName(selectedItem.label);
+				  var ab = config.getAbByUri(selectedItem.value);
 				  let cards = ab.childCards;
 				  var cnt = 0;
 				  while (cards.hasMoreElements()) {
@@ -69,8 +66,6 @@
 			  }
 			  
 		  }
-		  
-		  devTools.leave('dialog', 'onOpen');
 	  },
 	  
 	  getSelectOptions: function() {

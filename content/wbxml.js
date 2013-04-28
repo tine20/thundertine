@@ -398,6 +398,7 @@ var wbxml = {
   }, 
 
   httpRequest: function(xml, command) { 
+//	devTools.writeMsg('wbxml', 'httpRequest', 'command ' + command + '\nxml ' + xml);
 	// set default function values
 	if (typeof command == 'undefined')
 		command = 'Sync'; 
@@ -420,17 +421,26 @@ var wbxml = {
 	req.setRequestHeader("MS-ASProtocolVersion", '12.0');
 	req.setRequestHeader("Content-Length", wbxml.length);
 	req.onload = function () {
+//		devTools.writeMsg('wbxml', 'httpResponse', 'readyState: ' + req.readyState + ', status: ' + req.status + '\nresponse ' + req.responseText);
 		if (req.readyState == 4) {
 			if (req.status == 200) {
 				if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
 					helper.prompt(ttine.strings.getString('notTine'));
 				sync.dispatch(req);
-			} else 
-				sync.failed('http', req);
+			} else {
+				var err = {}
+				err.reason = 'http';
+				err.statusText = req.statusText;
+				sync.dispatch(req, err);
+			}
 		} 
 	}
 	req.upload.onerror = function (e) {
 		helper.prompt("Error " + e.target.status + " occurred while uploading.");
+		var err = {}
+		err.reason = 'upload';
+		err.statusText = e.target.status;
+		sync.dispatch(req, err);
 	}
 	req.sendAsBinary(wbxml);
   }, 

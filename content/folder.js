@@ -26,47 +26,88 @@ var folder = {
    *
    */
 
+  addSyncInfos: function(folders) {
+	if (folders != undefined) {
+		var start = (folders.lastSyncTime == undefined ? true : (folders.lastSyncDuration != undefined ? true : false));
+
+		var now = Date.now();
+		folders.lastSyncDuration = (start ? undefined : (now - folders.lastSyncTime)); 
+		folders.lastSyncTime = Date.now();
+
+		if (!start)
+			devTools.writeMsg('folder', 'addSyncInfos', 'lastFolderSync: ' + (folders.lastSyncDuration/1000) + ' s');
+	}  
+  },
+  
   update: function() {
-	devTools.enter('folder', 'update');
 	var folders = config.getFolders();
-	
+	var syncKey = (folders.syncKey == undefined ? 0 : folders.syncKey); 
+	// reset retryCounter
+	if (folders.retryCounter != undefined)
+		folders.retryCounter = undefined;
+
 	// ask folders
 	var folderRequest = '<?xml version="1.0" encoding="UTF-8"?>'+"\n"+
-		'<FolderHierarchy_FolderSync><FolderHierarchy_SyncKey>' + 
-		(folders.syncKey == undefined ? 0 : folders.syncKey) + 
-		'</FolderHierarchy_SyncKey></FolderHierarchy_FolderSync>';
+		'<FolderHierarchy_FolderSync><FolderHierarchy_SyncKey>' + syncKey + '</FolderHierarchy_SyncKey></FolderHierarchy_FolderSync>';
 	wbxml.httpRequest(folderRequest, 'FolderSync'); 
-	devTools.leave('folder', 'update');
+
+	this.addSyncInfos(folders);
   }, 
 
-  updateFinish: function(req) { 
-	devTools.enter('folder', 'updateFinish');
-	var syncConfig = config.getSyncConfig();
+  updateFinish: function(req, err) { 
 	var folders = config.getFolders();
+	
+	this.addSyncInfos(folders);
+
+	if (req == undefined) {
+		folders.lastSyncStatus = -1;
+		return false;
+	}
+	
+	if (err != undefined) {
+		folders.lastSyncStatus = -1;
+
+		// added folders on server results in http 500
+		if (err.reason == 'http' && err.status == 500) {
+			// arm for retry folder snyc 
+			if (folders.retryCounter == undefined) {
+				folders.retryCounter = 1;
+				err.retryLastAction = true;
+			}
+		} else
+			// clear retry folder snyc 
+			if (folders.retryCounter == undeifined)
+					folders.retryCounter = undefined;
+
+
+		return false;
+	}
 	
 	var response = wbxml.doXml(req.responseText); 
 	if (response == false) {
-		devTools.leave('folder', 'updateFinish', 'response == false');
+		devTools.leave('folder', 'updateFinish', 'response: no parsable xml\ntext: ' + req.responseText);
 		return false;
 	}
 
 	for (var i = 0; i < response.firstChild.childNodes.length; i++) {
 		var currNode = response.firstChild.childNodes[i];
 		// status
-		if (response.firstChild.childNodes[i].nodeName == 'Status' && currNode.firstChild.nodeValue != '1') {
-			helper.prompt(errortxt.folder['code'+currNode.firstChild.nodeValue]);
-			devTools.leave('folder', 'updateFinish', 'status: ' + currNode.firstChild.nodeValue);
-			return false;
-		}
-		else if (currNode.nodeName == 'FolderHierarchy_SyncKey')
+		if (currNode.nodeName == 'FolderHierarchy_Status') {
+			folders.lastSyncStatus = currNode.firstChild.nodeValue;
+			
+			if (currNode.firstChild.nodeValue != '1') {
+				helper.prompt(errortxt.folder['code'+currNode.firstChild.nodeValue]);
+				return false;
+			}
+		} else if (currNode.nodeName == 'FolderHierarchy_SyncKey') {
 			folders.syncKey = currNode.firstChild.nodeValue;
-		else if (currNode.nodeName == 'FolderHierarchy_Changes' && currNode.childNodes.length > 0) {
+		} else if (currNode.nodeName == 'FolderHierarchy_Changes') {
 			var cnt = response.firstChild.childNodes[i].childNodes.length;
 
 			for (var c=0; c<cnt; c++) {
 				var node = currNode.childNodes[c];
 				var action = null;
-				
+
 				switch (node.nodeName) {
 					case 'FolderHierarchy_Add':
 					case 'FolderHierarchy_Update':
@@ -141,7 +182,6 @@ var folder = {
 							jsonStr += (subType != null ? ', "type": "' + subType + '"' : '');
 							jsonStr += ' }';
 	
-							//config.addFolder(syncConfig, type, JSON.parse(jsonStr));
 							config.addFolder(type, JSON.parse(jsonStr));
 						}
 					}
@@ -165,10 +205,12 @@ var folder = {
 						config.removeFolder(serverId);
 				}
 			}
-		} 
+		} else {
+			devTools.writeMsg('folder', 'updateFinish', 'unhandled node: ' + currNode.nodeName + ' ' + (currNode.firstChild != undefined ? currNode.firstChild.nodeValue : 'no child'));
+ 		}
 	}
 	
-	devTools.leave('folder', 'updateFinish', 'folders: contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length);
+	devTools.leave('folder', 'updateFinish', 'folders: syncKey ' + folders.syncKey + ', contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length);
 	return true;
   }
 }

@@ -58,7 +58,7 @@ var helper = {
   },
 
   file2dom: function(filename) {
-	devTools.enter('helper', 'file2dom', 'filename: ' + filename);
+//	devTools.enter('helper', 'file2dom', 'filename: ' + filename);
 	var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"]
 		.createInstance(Components.interfaces.nsIFileInputStream); 
 	 var cstream = Components.classes["@mozilla.org/intl/converter-input-stream;1"]  
@@ -78,12 +78,12 @@ var helper = {
 		cstream.close();
 		fstream.close();
 	} catch(e) {
-		devTools.leave('helper', 'file2dom', 'exception: ' + e);
+//		devTools.leave('helper', 'file2dom', 'exception: ' + e);
 		return false;
 	}
 	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
 		.createInstance(Components.interfaces.nsIDOMParser); 
-	devTools.leave('helper', 'file2dom');
+//	devTools.leave('helper', 'file2dom');
 	return parser.parseFromString(data, "text/xml"); 
   }, 
 
