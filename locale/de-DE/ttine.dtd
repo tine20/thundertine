@@ -47,3 +47,8 @@
 
 <!ENTITY ttine.syncConfigTitle "Tine 2.0 Sync Konfiguration...">
 <!ENTITY ttine.syncButtonLabel "konfigurieren...">
+
+<!ENTITY ttine.remoteCreate "Anlegen">
+<!ENTITY ttine.remoteDelete "Löschen">
+<!ENTITY ttine.remoteUpdate "Umbenennen">
+<!ENTITY ttine.remoteRefresh "Aktualisieren">

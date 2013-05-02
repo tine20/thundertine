@@ -42,37 +42,28 @@ var sync = {
   },
 
   dispatch: function(req, err) {
+//	devTools.enter('sync', 'dispatch', 'req ' + req + ', err ' + err + ', dispatcher ' + JSON.stringify(this.dispatcher) + ', dispToGo ' + JSON.stringify(this.dispToGo));
 	var ignoreError = false;
 	
 	// just returned to here
 	switch (this.dispGoTo) {
-		case 'folderSync': 
-			if(!folder.updateFinish(req, err)) {
-				this.failed(12);
-				devTools.leave('sync', 'dispatch', "case folderSync: 12");
-				return false;
-			} 
-			this.dispatcher.splice(0,1);
-			this.dispGoTo = null;
-			break;
-		case 'remoteFoldersFinish': 
-			var foldersUpdated = folder.updateFinish(req, err);
-			
-			// response processor force retry
-			if (err != undefined && (typeof err.retryLastAction) == 'boolean' && err.retryLastAction == true) {
-				devTools.writeMsg('sync', 'dispatch', 'rearm ' + JSON.stringify(this.dispatcher));
-				ignoreError = true;
-				this.dispToGo = null;
-				break;
-			}
+		case 'folderAction': 
+			var result = folder.finishAction(req, err);
+			var retry = false;
 
-			if (foldersUpdated)
-				remoteFoldersFinish();
-			this.dispatcher.splice(0,1);
-			this.dispGoTo = null;
+			// response processor needs retry?
+			if (result == false && err != undefined)
+				retry = (err.retryLastAction != undefined ? err.retryLastAction : false);
+				
+			if (retry == false) {
+				this.dispatcher.splice(0,1);
+				this.dispGoTo = null;
+			} else
+				ignoreError = true;
 			break;
 		case 'sync': 
 			var status = this.response(req, err);
+
 			if(status != 1 && status != 7) 
 				this.failed(status);
 			this.dispGoTo = null;
@@ -80,39 +71,28 @@ var sync = {
 	}
 
 	// break if err
-	if (ignoreError == false && err != undefined) {
-		this.failed(err.reason, err.statusText);
-			return null;
+	if (err != undefined && ignoreError == false) {
+		this.failed(err.reason, err.statusText, err);
+		return null;
 	}
 	// empty dispatcher means nothing to do
 	if (this.dispatcher.length <= 0) {
+//		devTools.leave('sync', 'dispatch', 'empty dispatcher');
 		return null;
 	}
 
 	// go for next action
 	switch(this.dispatcher[0]) {
-		case "folderSync":
-			this.dispGoTo = 'folderSync';
-			folder.update();
-			break;
-		case "folderSync_Options":
-			this.dispGoTo = 'remoteFoldersFinish';
-			folder.update();
-			break;
-		case "prepareContacts": 
-			this.syncCollections.push('contacts');
+		case "start":
+			this.inProgress = true;
+			if (typeof ttine.statusBar != 'undefined')
+				ttine.statusBar('working');
 			this.dispatcher.splice(0,1);
 			this.dispatch();
 			break;
-		case "prepareCalendar":
-			this.syncCollections.push('calendar');
-			this.dispatcher.splice(0,1);
-			this.dispatch();
-			break;
-		case "prepareTasks":
-			this.syncCollections.push('tasks');
-			this.dispatcher.splice(0,1);
-			this.dispatch();
+		case "folderAction":
+			this.dispGoTo = 'folderAction';
+			folder.performAction();
 			break;
 		case "sync": 
 			this.dispGoTo = 'sync';
@@ -122,20 +102,8 @@ var sync = {
 				this.dispatch();
 			}
 			break;
-		case "start":
-			this.inProgress = true;
-			// save timestamp sync start
-			config.addSyncInfos();
-			if (typeof ttine.statusBar != 'undefined')
-				ttine.statusBar('working');
-			this.dispatcher.splice(0,1);
-			this.syncCollections = Array();
-			this.dispatch();
-			break;
 		case "finish":
 			this.inProgress = false; 
-			// save timestamp sync finsish
-			config.addSyncInfos();
 			if (typeof ttine.statusBar != 'undefined') {
 				ttine.statusBar();
 				ttine.startSyncTimer();
@@ -146,17 +114,29 @@ var sync = {
 		default:
 			this.dispGoTo = '';
 	}
+//	devTools.leave('sync', 'dispatch');
 	return true; // to avoid warnings
   },
 
-  failed: function (reason, txt) { 
-	// In asynchron mode die silently -> visible in statusbar
+  failed: function (reason, txt, err) { 
+	devTools.writeMsg('sync', 'failed', 'reason ' + reason + ', txt ' + txt + (err != undefined ? ', err ' + JSON.stringify(err) : ''));
+    // In asynchron mode die silently -> visible in statusbar
 	this.dispatcher = Array();
 	
-	if (reason == 'http')
-		helper.prompt(ttine.strings.getString('connectionFailed')+"\n\n" + txt.statusText + "\n\n"+ttine.strings.getString('checkSettings'));
-	else
+	if (reason == 'http') {
+		var msg = true;
+		
+		if (err != undefined)
+			msg = (err.dontPromptUser != undefined ? !err.dontPromptUser : true);
+		
+		if (msg)
+			helper.prompt(ttine.strings.getString('connectionFailed')+"\n\n" + txt + "\n\n"+ttine.strings.getString('checkSettings'));
+	} else
 		this.lastSyncStatus = reason;
+
+	// save timestamp sync finsish
+	config.addSyncInfos('failed');
+	
 	sync.inProgress = false;
 	ttine.initialized = false;
 	ttine.statusBar('error');
@@ -210,17 +190,16 @@ var sync = {
 		return false;
 	}
 	
+	config.addSyncInfos('start');
+	
 	// asynchronous -> ends up in this.dispatch()
 	wbxml.httpRequest(dom);
 
-	config.addSyncInfos();
-	
 	return true; // to avoid warnings
   }, 
 
-
   response: function(req, err) {  
-	config.addSyncInfos();
+	config.addSyncInfos('stop');
 	
 	if (err != undefined) {
 		config.lastSyncStatus = -1;
@@ -309,7 +288,7 @@ var sync = {
 		 */
 	}
 
-	devTools.leave("sync", "response", "syncStatus: " + syncStatus);
+	devTools.leave('sync', 'response', 'syncStatus ' + syncStatus + (syncConfig.lastSyncDuration != undefined ? ' (' + syncConfig.lastSyncDuration/1000 + ' s)' : ''));
 	return syncStatus;
   },
 
@@ -361,7 +340,7 @@ var sync = {
 		dom.lastChild.appendChild(doc.createElement('Class'));
 			dom.lastChild.lastChild.appendChild(doc.createTextNode('Contacts')); 
 		// queue next request (get entries with key of 1)
-		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'prepareContacts', 'sync');
+		this.dispatcher.splice(this.dispatcher.indexOf('finish')-1, 0, 'sync');
 	} else { 
 //		devTools.writeMsg('sync', 'createContactCollection', "syncKey > 1");
 		// collections -> Collection -> GetChanges?

@@ -17,9 +17,7 @@ later versions try to cover these questions, too.
 
 FEATURES
 
-By now ThunderTine syncs one address book with Tine 2.0, either with a virtual
-contacts folder inside tine (which is made for dumb device) or with a selected
-folder (if you tell ThunderTine to pretend to be a iPhone). 
+By now ThunderTine syncs address books with Tine 2.0 contacts folder inside tine.
 
 There's no calender and tasks synchronisation by the time of writing.
 
@@ -59,3 +57,5 @@ HISTORY
 	support for thunderbird 17.0.4 (various javascript bugfixes)
 	delayed access to password manager (on first httpRequest; increases usability if masterpassword is used)
 	support for syncing multiple contact folders added (several modifications under the hood; simplified sync code)
+0.3b	sync contacts complete (minor runtime errors fixed)
+	full support for folder operations (FolderDelete seems to be brocken in tine20)

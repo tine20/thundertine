@@ -77,11 +77,10 @@ var ttine = {
 	var connectChanged = false;
 	try {
 		connectChanged = (this.userConfigData.url.split('/', 3)[2].split(':', 1)[0] != config.url.split('/', 3)[2].split(':', 1)[0] || 
-						  this.userConfigData.user != config.user || 
-						  this.userConfigData.pwdChanged);
+						  this.userConfigData.user != config.user);
 	} catch(e) {
 	}
-	config.mergeSyncConfig(this.userConfigData.jsonSyncConfig, connectChanged);
+	config.mergeSyncConfig(this.userConfigData.jsonSyncConfig, connectChanged, this.userConfigData.pwdChanged);
 
 	// reset dialog result
 	this.userConfigAction = this.userConfigData = null;
@@ -132,32 +131,29 @@ var ttine = {
 		else
 			state = 'icon';
 	}
+	devTools.write("ttine", "statusBar", "state: " + state + ', statusBar: ' + statusbar);
 	statusbar.setAttribute("image", "chrome://ttine/skin/ttine_" + state + ".png");
 	statusbar.blur();
 //	devTools.leave("ttine", "statusBar");
   },
 
   sync: function() { 
-//	devTools.enter("ttine", "sync");
 	// if other thread is already running quit
 	if (sync.inProgress || !this.initialized) {
-//		devTools.leave("ttine", "sync", "false");
 		return false;
 	}
 
 	this.stopSyncTimer();
 	
 	var toDo = Array('start');
-	if (config.checkFolderBefore || config.getFolders().syncKey == undefined)
-		toDo.push('folderSync');
-	toDo.push('prepareContacts');
-	/*
-	 * MISSING: prepare calendar and tasks
-	 */
+	var folders = config.getFolders();
+	if (config.checkFolderBefore || folders.syncKey == undefined) {
+		if (folder.syncFolder() == true)
+			toDo.push('folderAction');
+	}
 	toDo.push('sync');
 	toDo.push('finish');
 	sync.execute( toDo );
-//	devTools.leave("ttine", "sync");
 	return true;
   },
 
@@ -170,12 +166,9 @@ var ttine = {
   
   startSyncTimer: function(delay) {
 	var syncConfig = config.getSyncConfig();
-	var nextSync = (typeof delay == 'number' ? delay : config.interval);
-
 	// delay initial sync for 10s (spend a little bit time for thunderbird startup)
-	if (syncConfig.lastSyncTime == undefined)
-		nextSync = 10000;
-	
+	var nextSync = (typeof delay == 'number' ? delay : (syncConfig.lastSyncTime == undefined ? 10000 : config.interval));
+
     this.timerId = window.setTimeout('ttine.sync();', nextSync);
   },
   

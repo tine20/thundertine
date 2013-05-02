@@ -252,21 +252,42 @@ var config = {
 			}
 	},
 		
-	addSyncInfos: function() {
+	addSyncInfos: function(action) {
 		var syncConfig = config.getSyncConfig();
 		
 		if (syncConfig != undefined) {
-			var start = (syncConfig.lastSyncTime == undefined ? true : (syncConfig.lastSyncDuration != undefined ? true : false));
-
-			var now = Date.now();
-			syncConfig.lastSyncDuration = (start ? undefined : (now - syncConfig.lastSyncTime)); 
-			syncConfig.lastSyncTime = Date.now();
-			
-			if (!start)
-				devTools.writeMsg('config', 'addSyncInfos', 'lastCollectionSync: ' + (syncConfig.lastSyncDuration/1000) + ' s');
-		}  
+			switch (action) {
+				case 'start':
+					syncConfig.lastSyncDuration = undefined;
+					syncConfig.lastSyncTime = Date.now();
+					break;
+				case 'stop':
+					syncConfig.lastSyncDuration = Date.now() - syncConfig.lastSyncTime;
+					syncConfig.lastSyncTime = Date.now();
+					break;
+				case 'failed':
+					syncConfig.lastSyncDuration = Date.now() - syncConfig.lastSyncTime;
+					syncConfig.lastSyncTime = Date.now();
+					break;
+				default:
+					devTools.writeMsg('config', 'addSyncInfos', 'action: ' + action);
+					break;
+			}
+		} else
+			devTools.writeMsg('config', 'addSyncInfos', 'action: ' + action + ' syncConfig = undefined!');
 	},
-
+	
+	isLastError: function(reason, status, err) {
+		var result = false;
+		
+		if (err != undefined) {
+			result = (err.reason == reason && err.status == status); 
+		}
+		
+//		devTools.writeMsg('config', 'isLastError', 'reason ' + reason + ', status ' + status + ', err ' + (err != undefined ? JSON.stringify(err) : err) + ', result ' + result);
+		return result;
+	},
+	
 	getSyncConfig : function() {
 		if (config.jsonSyncConfig == null) {
 			var prefs = Components.classes["@mozilla.org/preferences-service;1"]
@@ -323,14 +344,21 @@ var config = {
 		prefs.setCharPref('jsonSyncConfig', JSON.stringify(jsonConfigSave));
 	},
 	
-	mergeSyncConfig: function(newSyncConfig, connectModified) {
-		devTools.enter('config', 'mergeSyncConfig', 'reset: ' + connectModified);
+	mergeSyncConfig: function(newSyncConfig, connectModified, passwordChanged) {
+		devTools.enter('config', 'mergeSyncConfig', 'conn: ' + connectModified + ', pwd: ' + passwordChanged);
+
+		if (passwordChanged == true)
+			this.setPwd('');
+		
+		// re-read whole config
 		if (connectModified == true) {
-			
-		} else {
-			this.mergeFolders(newSyncConfig.folders);
-			this.mergeAbSyncConfig(newSyncConfig.contacts.configured);
+			this.jsonSyncConfig = null;
+			this.read();
 		}
+		
+		// merge with option dialog results
+		this.mergeFolders(newSyncConfig.folders);
+		this.mergeAbSyncConfig(newSyncConfig.contacts.configured);
 		
 		this.saveSyncConfig();
 		devTools.leave('config', 'mergeSyncConfig');
@@ -373,14 +401,20 @@ var config = {
 	},
 	
 	getFolder: function(folderType, remoteId) {
-		var folders = this.getFolders(folderType);
+		var folderTypes = ['contacts', 'calendars', 'tasks'];
 		var result = null;
 
-		var cnt = folders.length;
-		for (var i=0; i<cnt; i++) {
-			if (folders[i].id == remoteId) {
-				result = folders[i];
-				break;
+		outerLoop:
+		for (var idx in folderTypes) {
+			if (folderType != undefined && folderTypes[idx] != folderType)
+				continue;
+			
+			var folders = this.getFolders(folderTypes[idx]);
+			for (var i=0; i<folders.length; i++) {
+				if (folders[i].id == remoteId) {
+					result = folders[i];
+					break outerLoop;
+				}
 			}
 		}
 		
@@ -426,13 +460,13 @@ var config = {
 	},
 	
 	removeFolder: function(folderId) {
-		devTools.leave('config', 'removeFolder', 'folder ' + folderId);
+//		devTools.leave('config', 'removeFolder', 'folder ' + folderId);
 		var folderTypes = ['contacts', 'calendars', 'tasks'];
 		
 		for (var idx in folderTypes) {
 			var folderType = folderTypes[idx];
 			var folders = this.getFolders(folderType);
-			devTools.writeMsg('config', 'removeFolder', 'folderType ' + folderType + ' ' + folders.length);
+//			devTools.writeMsg('config', 'removeFolder', 'folderType ' + folderType + ' ' + folders.length);
 
 			var cnt = folders.length;
 			for (var i=0; i<cnt; i++) {
@@ -444,8 +478,8 @@ var config = {
 			}
 		}
 
+//		devTools.leave('config', 'removeFolder', 'folders: contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length);
 		return false;
-		devTools.leave('config', 'mergeFolders', 'folders: contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length);
 	},
 	
 	mergeFolders: function(paramNewFolders) {
@@ -523,5 +557,4 @@ var config = {
 		else
 			return false;
 	}
-
 }

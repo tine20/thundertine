@@ -423,22 +423,26 @@ var wbxml = {
 	req.onload = function () {
 //		devTools.writeMsg('wbxml', 'httpResponse', 'readyState: ' + req.readyState + ', status: ' + req.status + '\nresponse ' + req.responseText);
 		if (req.readyState == 4) {
+			var err = undefined; 
+
 			if (req.status == 200) {
 				if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
 					helper.prompt(ttine.strings.getString('notTine'));
-				sync.dispatch(req);
 			} else {
-				var err = {}
+				err = {}
 				err.reason = 'http';
+				err.status = req.status;
 				err.statusText = req.statusText;
-				sync.dispatch(req, err);
 			}
+
+			sync.dispatch(req, err);
 		} 
 	}
 	req.upload.onerror = function (e) {
 		helper.prompt("Error " + e.target.status + " occurred while uploading.");
 		var err = {}
 		err.reason = 'upload';
+		err.status = -1;
 		err.statusText = e.target.status;
 		sync.dispatch(req, err);
 	}

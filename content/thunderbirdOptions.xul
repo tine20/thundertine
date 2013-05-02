@@ -7,9 +7,19 @@
 	minwidth="520"
 	minheight="480"
 	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+	onready="onready();"
 	onload="onopen();"
 	ondialogaccept="return onclose(true);"
 	ondialogcancel="return onclose(false);">
+
+  <popupset>
+    <menupopup id="foldersPopup" onpopupshowing="return onListBoxContextMenu(event);">
+      <menuitem label="&ttine.remoteCreate;" hidden="true"/>
+      <menuitem label="&ttine.remoteDelete;" oncommand="removeRemoteFolder();"/>
+      <menuitem label="&ttine.remoteUpdate;" hidden="true"/>
+      <menuitem label="&ttine.remoteRefresh;" oncommand="remoteFolders();"/>
+    </menupopup>
+  </popupset>
 
   <prefpane id="paneThunderTineHost" label="&ttine.prefwindowToolbarHost;" image="chrome://ttine/skin/tine.png">
 	<preferences>
@@ -24,13 +34,20 @@
 	<vbox>
 		<groupbox>
 			<caption label="&ttine.prefwindowServer;" />
-			<label control="host" value="&ttine.prefwindowHostPref;" />
-			<textbox preference="hostPref" id="host" />
-			<checkbox id="hostSsl" label="&ttine.prefwindowSSL;" preference="hostSslPref"/>
-			<label control="user" value="&ttine.prefwindowUsername;" />
-			<textbox id="user" preference="userPref" />
-			<label control="password" value="&ttine.prefwindowPassword;" />
-			<textbox id="password" type="password" />
+        	<hbox>
+        		<vbox flex="100">
+					<label control="host" value="&ttine.prefwindowHostPref;" />
+					<textbox preference="hostPref" id="host" />
+					<checkbox id="hostSsl" label="&ttine.prefwindowSSL;" preference="hostSslPref"/>
+					<label control="user" value="&ttine.prefwindowUsername;" />
+					<textbox id="user" preference="userPref" />
+					<label control="password" value="&ttine.prefwindowPassword;" />
+					<textbox id="password" type="password" />
+				</vbox>
+				<vbox id="vbConnectionTest" flex="1" dir="reverse" hidden="true">
+        			<button id="bConnectionTest" label="Test" oncommand="remoteFolders();"/>
+				</vbox>
+        	</hbox>
 		</groupbox>
 		<groupbox>
 			<caption label="&ttine.prefwindowSyncOptions;" />
@@ -66,7 +83,7 @@
         	</listbox>
         	<hbox>
         		<button id="toggleSync" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
-        		<button id="reinitSync" label="&ttine.prefwindowReinitialize;" oncommand="reInit();"  disabled="true" />
+        		<button id="reinitSync" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
         	</hbox>
         </groupbox>
   </prefpane>

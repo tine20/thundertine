@@ -36,6 +36,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	// override folders reference with global cached syncConfig folders
 	config.getSyncConfig().folders = window.opener.config.getSyncConfig().folders;
 	
+	checkConnectionStatus();
+	
 	// get password and clear it in manager (to store it at close again)
 	var passwordManager = Components.classes["@mozilla.org/login-manager;1"]
 		.getService(Components.interfaces.nsILoginManager);
@@ -76,7 +78,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	
 	// deny option dialog close, until folder sync is pending
 	var folders = config.getFolders();
-	if (folders.lastSyncDuration == undefined) {
+	
+	if (folder.isResponsePending(folders) == true) {
 		var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
         	.getService(Components.interfaces.nsIPromptService);
 
@@ -128,8 +131,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 	// apply modified syncConfig to callee (needs to be merged) 
 	window.opener.ttine.optionsResultApplyCallback(result, JSON.parse(JSON.stringify(config)));
+	
+	return true;
   }
 
+  function onListBoxContextMenu(event) {
+  	var open = false;
+	// deny popup open, until folder sync is pending
+	var folders = config.getFolders();
+	
+	if (folder.isResponsePending(folders) == true)
+		return open;
+
+	var list = getContactsList();
+  	var listItem = list.selectedItem;
+  	
+  	if (listItem != undefined) {
+  		open = (listItem.firstChild.getAttribute('value') == '' && listItem.lastChild.getAttribute('value') != '');
+  	}
+  	
+	return open;
+  }
+  
   function localAbs() {
 	  	var list = getContactsList();
 	  	
@@ -144,28 +167,66 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			list.appendChild(newListItem(config.getAbSyncConfigByABook(addressbooks[i]), addressbooks[i].dirName, addressbooks[i].URI, '', ''));
   }
   
-  function remoteFolders() {
-	// overwrite connection settings
-	config.url = (document.getElementById('hostSsl').checked ? 'https://' : 'http://') + 
-		document.getElementById('host').value + '/Microsoft-Server-ActiveSync';
-	config.user = document.getElementById('user').value;
-	config.setPwd(document.getElementById('password').value);
-	// show remote folders (empty if not synced yet)
-	remoteFoldersFinish();
-	
+  function createRemoteFolder() {
+	 overwriteConnectionSettings();
+	  
 	// force syncing remote folders
-	if (config.minimumConfig())
-		sync.execute(Array('start', 'folderSync_Options', 'finish'));
+	if (config.minimumConfig()) {
+		if (folder.createFolder('0', '14', 'CreateTest', 'y') == true)
+			sync.execute(Array('folderAction'));
+	}
   } 
 
-  function remoteFoldersFinish() {
+  function removeRemoteFolder() {
+	var list = getContactsList();
+	var listItem = list.selectedItem;
+	  	
+	overwriteConnectionSettings();
+		
+	// force syncing remote folders
+	if (config.minimumConfig()) {
+		if (folder.deleteFolder(listItem.lastChild.getAttribute('value'), 'y') == true)
+			sync.execute(Array('folderAction'));
+	}
+  } 
+
+  function remoteFolders() {
+	overwriteConnectionSettings();
+		
+	// show remote folders (empty if not synced yet)
+	remoteFoldersFinish();
+		
+	// force syncing remote folders
+	if (config.minimumConfig()) {
+		if (folder.syncFolder('y') == true) {
+			statusBar('working');
+			sync.execute(Array('folderAction'));
+		}
+	}
+  }
+
+  function remoteFoldersFinish(err) {
 	// contacts
-	folders = config.getFolders('contacts');
+	var folders = config.getFolders('contacts');
   	var list = getContactsList();
 
+  	// handle buttons
+  	checkConnectionStatus(err);
+  	
+  	// check last err and send response (modify err object)
+  	if (err != undefined && !config.isLastError('http', 200, err)) {
+  		if (config.isLastError('http', 401, err)) {
+//  			devTools.writeMsg('options', 'remoteFoldersFinish', 'err.dontPromptUser = true');
+  			err.dontPromptUser = true;
+  		}
+
+  		statusBar('inactive');
+  		return null;
+  	}
+  	
   	// add or update listitem
-  	var cnt = folders.length;
-  	for (var i=0; i<cnt; i++) {
+  	for (var i=0; i<folders.length; i++) {
+//  		devTools.writeMsg('options', 'remoteFoldersFinish', 'folders[' + i + '] "' + JSON.stringify(folders[i]) + '"');
   		var folder = folders[i];
   		var listItem = getContactsListItem(folder.id);
 
@@ -173,13 +234,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   			listItem.lastChild.setAttribute('label', folder.name);
   			listItem.lastChild.setAttribute('value', folder.id);
   		} else {
-  			listItem = newListItem(null, '', '', folder.name, folder.id);
-			list.appendChild(listItem);
+			var newItem = newListItem(null, '', '', folder.name, folder.id);
+			var cnt = list.childNodes.length;
+			var insertBeforeItem = null;
+			// sort unconfigured remote folders
+			for (var j=0; j<cnt; j++) {
+				if (list.childNodes[j].tagName == 'listitem' && 
+					list.childNodes[j].value == '' &&
+					(list.childNodes[j].lastChild.getAttribute('label') > folder.name ||
+					(list.childNodes[j].lastChild.getAttribute('label') == folder.name && list.childNodes[j].lastChild.getAttribute('value') > folder.id)
+				)) {
+					insertBeforeItem = list.childNodes[j];
+					break;
+				}
+			}
+			list.insertBefore(newItem, insertBeforeItem);
   		}
   	}
   	// delete listitem
-  	cnt = list.childNodes.length;
-	for (var i=0; i<cnt; i++)
+	for (var i=0; i<list.childNodes.length; i++)
 		if (list.childNodes[i].tagName == 'listitem') {
 			var listItem = list.childNodes[i];
 			var syncConfig = this.config.parseJSONFromString(listItem.value);
@@ -198,6 +271,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				list.removeChild(listItem);
 			}
 		}
+
+	statusBar('icon');
 	return null;
   }
 
@@ -273,7 +348,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			var cnt = list.childNodes.length;
 			var insertBeforeItem = null;
 			// sort unconfigured remote folders
-			for (var i=0; i<cnt; i++)
+			for (var i=0; i<cnt; i++) {
 				if (list.childNodes[i].tagName == 'listitem' && 
 					list.childNodes[i].value == '' &&
 					(list.childNodes[i].lastChild.getAttribute('label') > remoteName ||
@@ -282,6 +357,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 					insertBeforeItem = list.childNodes[i];
 					break;
 				}
+			}
 			list.insertBefore(newItem, insertBeforeItem);
 			
 			modifyListItem(listItem, null
@@ -486,8 +562,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 		lc = ab.appendChild(document.createElement('listcell'));
 		lc.setAttribute('label', rLabel);
-		if (rValue != '')
+		if (rValue != '') {
 			lc.setAttribute('value', rValue);
+		}
+
+		ab.setAttribute('context', 'foldersPopup');
 		
 		return ab;
   }
@@ -510,4 +589,49 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		
 		// button state
 		onListBoxSelection();
+  }
+
+  function overwriteConnectionSettings() {
+	  var host = document.getElementById('host').value;
+	  var url = (document.getElementById('hostSsl').checked ? 'https://' : 'http://') + host + '/Microsoft-Server-ActiveSync';
+	  var user = document.getElementById('user').value;
+	  var pwd = document.getElementById('password').value;
+	  
+	  var connectChanged = false;
+	  try {
+		  connectChanged = (host != config.url.split('/', 3)[2].split(':', 1)[0] || user != config.user);
+	  } catch(e) {
+	  }
+	  // connect changes?
+	  if (connectChanged) {
+		  config.jsonSyncConfig = null;
+	  }
+	  
+	  // overwrite connection settings
+	  config.url = url;
+	  config.user = user;
+	  config.setPwd(pwd);
+	
+  }
+
+  function checkConnectionStatus(err) {
+//	  devTools.enter('options', 'checkConnectionStatus', 'http 401: ' + config.isLastError('http', 401));
+	  var vbConnectionTest = document.getElementById('vbConnectionTest');
+	  
+	  if (vbConnectionTest != undefined) {
+		  vbConnectionTest.hidden = !(config.isLastError('http', 401, err) || !config.minimumConfig());
+		  
+		  if (vbConnectionTest.hidden == false) {
+			  document.getElementById("ThundertinePreferences").showPane(document.getElementById('paneThunderTineHost')); 
+		  }
+	  }
+  }
+
+  function statusBar(state) {
+	  try {
+		  // values: working, inactive, icon
+		  window.opener.ttine.statusBar(state);
+	  } catch(e) {
+		  
+	  }
   }
