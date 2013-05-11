@@ -97,10 +97,29 @@ var helper = {
     }
   },
 
+  promptInput: function(txt, input) {
+      var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+                         .getService(Components.interfaces.nsIPromptService);
+
+      var check = {value: false};
+
+	  return promptService.prompt(window, ttine.strings.getString("messageTitle"), txt, input, null, check);
+  },
+
   ask: function(txt) {
     var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
                                   .getService(Components.interfaces.nsIPromptService);
     return promptService.confirm(window, ttine.strings.getString("messageTitle"), txt);
+  },
+
+  askYesNo: function(txt) {
+	    var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+	                                  .getService(Components.interfaces.nsIPromptService);
+
+	    var bFlag = (promptService.BUTTON_POS_0) * (promptService.BUTTON_TITLE_YES) + (promptService.BUTTON_POS_1) * (promptService.BUTTON_TITLE_NO);
+	    var result = promptService.confirmEx(window, ttine.strings.getString("messageTitle"), txt, bFlag, null, null, null, null, { 'value': false });
+
+	    return (result == 0);
   },
 
   /*
@@ -109,15 +128,15 @@ var helper = {
    */
 
   debugDom: function(dom) {
-	if (dom == null) 
+	if (dom == null) {
 		alert('Dom is empty!');
-	else {
+	} else {
 		var serializer = new XMLSerializer();
+		var pretty = null;
 		try {
-			var pretty = serializer.serializeToString(dom);
-		}
-		catch (err) {
-			var pretty = "This is not a DOM structure!\n\n"+err;
+			pretty = serializer.serializeToString(dom);
+		} catch (err) {
+			pretty = "This is not a DOM structure!\n\n"+err;
 		}
 		alert(pretty); 
 	}
@@ -140,7 +159,7 @@ var helper = {
 
 	let abManager = Components.classes["@mozilla.org/abmanager;1"]
 		.getService(Components.interfaces.nsIAbManager);
-	
+
 	let addressBook = abManager.getDirectory(uri);
 	let cards = addressBook.childCards;
 	while (cards.hasMoreElements()) { 
@@ -157,7 +176,18 @@ var helper = {
 	}
 
 	alert(res);
+  },
+  
+  unescapeNodeValue: function(nodeValue) {
+	var result = nodeValue;
+
+	if (result != undefined) {
+		result = result.replace(/&lt;/g, '<');
+		result = result.replace(/&gt;/g, '>');
+		result = result.replace(/&amp;/g, '&');
+	}
+	
+	return result;
   }
 
-}
-
+};

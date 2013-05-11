@@ -5,8 +5,8 @@
 <dialog id="ThundertineDialog"
 	title="&ttine.syncConfigTitle;"
 	buttons="accept,cancel"
-	minwidth="480"
-	minheight="320"
+	minwidth="320"
+	minheight="240"
 	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
 	onload="dialog.onOpen();"
 	ondialogaccept="return dialog.onDialogClose(true);"
@@ -25,6 +25,7 @@
 	</vbox>
 
   <script src="ab.js" type="application/x-javascript;version=1.7" />
+  <script src="cal.js" type="application/x-javascript;version=1.7" />
   <script src="folder.js" type="application/x-javascript;version=1.7" />
   <script src="ashttp.js" type="application/x-javascript;version=1.7" />
   <script src="helper.js" type="application/x-javascript;version=1.7" />

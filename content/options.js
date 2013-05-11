@@ -21,20 +21,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   var prefs = Components.classes["@mozilla.org/preferences-service;1"]
   		.getService(Components.interfaces.nsIPrefService);
   prefs = prefs.getBranch("extensions.ttine.");
-
+  
   // if under Windows Button Cancel is pressed, remember pwd and config
   var oldpwd = '';
   var timerId = null;
 
-  var ttine = { }
+  var ttine = { };
   ttine.strings = window.opener.document.getElementById("ttine-strings");
 	
   function onopen() {
 	// read current config
 	config.read();
 
-	// override folders reference with global cached syncConfig folders
-	config.getSyncConfig().folders = window.opener.config.getSyncConfig().folders;
+	// clone current config
+	config.jsonSyncConfig = JSON.parse(JSON.stringify(window.opener.config.getSyncConfig()));
 	
 	checkConnectionStatus();
 	
@@ -43,7 +43,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		.getService(Components.interfaces.nsILoginManager);
 	var url = 
 		(document.getElementById('hostSsl').checked ? 'https://' : 'http://') + 
-		document.getElementById('host').value + '/Microsoft-Server-ActiveSync'; 
+		document.getElementById('host').value + config.urlSuffix; 
 	var nsLoginInfo = new Components.Constructor("@mozilla.org/login-manager/loginInfo;1",
 		Components.interfaces.nsILoginInfo, "init");
 	var username = document.getElementById('user').value;
@@ -63,8 +63,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			}
 		}
 	}
-	// load contacts pane
+	
+	// load local and remote data
 	localAbs();
+	localCals();
 	remoteFolders();
   }
 
@@ -94,7 +96,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			.getService(Components.interfaces.nsILoginManager);
 		var url = 
 			(document.getElementById('hostSsl').checked ? 'https://' : 'http://') + 
-			document.getElementById('host').value + '/Microsoft-Server-ActiveSync';
+			document.getElementById('host').value + config.urlSuffix;
 		var nsLoginInfo = new Components.Constructor("@mozilla.org/login-manager/loginInfo;1",
 			Components.interfaces.nsILoginInfo, "init");
 		var loginInfo = new nsLoginInfo(
@@ -118,7 +120,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				.getService(Components.interfaces.nsILoginManager);
 			var url = 
 				(prefs.getBoolPref('hostSsl') ? 'https://' : 'http://') + 
-				prefs.getCharPref('host') + '/Microsoft-Server-ActiveSync';
+				prefs.getCharPref('host') + config.urlSuffix;
 			var nsLoginInfo = new Components.Constructor("@mozilla.org/login-manager/loginInfo;1",
 				Components.interfaces.nsILoginInfo, "init");
 			var loginInfo = new nsLoginInfo(
@@ -143,18 +145,68 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	if (folder.isResponsePending(folders) == true)
 		return open;
 
-	var list = getContactsList();
+	var category = selectedCategory();
+	if ((category == 'calendars' || category == 'tasks') && !config.isCalendarAccessible())
+		return open;
+	
+	var list = getListByCategory(category);
   	var listItem = list.selectedItem;
-  	
+
   	if (listItem != undefined) {
-  		open = (listItem.firstChild.getAttribute('value') == '' && listItem.lastChild.getAttribute('value') != '');
+  	  	var isLocal = (listItem.firstChild.getAttribute('label') != '');
+  	  	var isRemote = (listItem.lastChild.getAttribute('label') != '');
+  	  	var isConfigured = (listItem.value != '');
+  	  	
+  		document.getElementById('cmRemoteDelete').hidden = !(isRemote && !isConfigured);
+  		document.getElementById('cmRemoteUpdate').hidden = !(isRemote);
+
+  		open = (isLocal  == true || isRemote == true);
   	}
+  	
+  	document.getElementById('cmRemoteRefresh').hidden = false;
+  	document.getElementById('cmRemoteCreate').hidden = false;
   	
 	return open;
   }
   
+  function onListBoxSelection(disabled)
+  {
+		var buttons = {};
+		buttons.contacts = {};
+		buttons.contacts.config = document.getElementById('toggleSyncContacts');
+		buttons.contacts.reinit = document.getElementById('reinitSyncContacts');
+		buttons.calendars = {};
+		buttons.calendars.config = document.getElementById('toggleSyncCalendars');
+		buttons.calendars.reinit = document.getElementById('reinitSyncCalendars');
+		buttons.tasks = {};
+		buttons.tasks.config = document.getElementById('toggleSyncTasks');
+		buttons.tasks.reinit = document.getElementById('reinitSyncTasks');
+
+		var folders = config.getFolders();
+		var disableAll = (folder.isResponsePending(folders) == true || (typeof disabled == 'boolean' && disabled == true));
+		
+		for (var idx in config.categories) {
+			var category = config.categories[idx];
+			var list = getListByCategory(category);
+			var listItem = list.selectedItem;
+
+			// disable all
+			buttons[category].config.disabled = buttons[category].reinit.disabled = true;
+
+			if ((category == 'calendars' || category == 'tasks') && !config.isCalendarAccessible())
+				continue;
+			
+			// selective turn on
+			if (disableAll == false && listItem != null) {
+				buttons[category].config.disabled = false;
+				buttons[category].reinit.disabled = !(listItem.firstChild.getAttribute('label') != '' && listItem.value == '');
+			}
+		}
+  }
+  
   function localAbs() {
-	  	var list = getContactsList();
+	  	var category = 'contacts';
+	  	var list = getListByCategory(category);
 	  	
 		while (list.childNodes.length > 0) {
 			if (list.lastChild.tagName == 'listitem')
@@ -163,22 +215,82 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				break;
 		}
 		var addressbooks = config.getAbs();
-		for (var i=0; i<addressbooks.length; i++)
-			list.appendChild(newListItem(config.getAbSyncConfigByABook(addressbooks[i]), addressbooks[i].dirName, addressbooks[i].URI, '', ''));
+		for (var i=0; i<addressbooks.length; i++) {
+			var abook = addressbooks[i];
+			list.appendChild(newListItem(config.getSyncConfigByCategoryUri(category, abook.URI), abook.dirName, abook.URI, '', ''));
+		}
   }
   
-  function createRemoteFolder() {
-	 overwriteConnectionSettings();
+  function localCals(category) {
 	  
-	// force syncing remote folders
-	if (config.minimumConfig()) {
-		if (folder.createFolder('0', '14', 'CreateTest', 'y') == true)
-			sync.execute(Array('folderAction'));
+	  	if (category == undefined) {
+	  		localCals('calendars');
+	  		localCals('tasks');
+	  	} else {
+		  	var list = getListByCategory(category);
+		  	
+			while (list.childNodes.length > 0) {
+				if (list.lastChild.tagName == 'listitem')
+					list.removeChild(list.lastChild);
+				else
+					break;
+			}
+			var calendars = config.getCals();
+			for (var i=0; i<calendars.length; i++) {
+				var cal = calendars[i];
+				list.appendChild(newListItem(config.getSyncConfigByCategoryUri(category, cal.URI), cal.dirName, cal.URI, '', ''));
+			}
+  		}
+  }
+
+  function createRemoteFolder() {
+	overwriteConnectionSettings();
+
+	var name = {};
+	name.value = '';
+
+	if (helper.promptInput('Verzeichnis-Name', name) == true && name.value != '') {
+		// force syncing remote folders
+		if (config.minimumConfig()) {
+			var category = selectedCategory();
+			if (folder.createFolder('0', folder.serverTypeForCategory(category), name.value, 'y') == true) {
+				statusBar('working');
+				sync.execute(Array('folderAction'));
+			}
+		}
 	}
   } 
 
+  function renameRemoteFolder() {
+	overwriteConnectionSettings();
+
+	var category = selectedCategory();
+	var list = getListByCategory(category);
+	var listItem = list.selectedItem;
+	var rf = config.getFolder(category, listItem.lastChild.getAttribute('value'));
+
+	if (rf == null)
+		return false;
+	
+	var name = {};
+	name.value = rf.name;
+
+	if (helper.promptInput('Verzeichnis-Name', name) == true && name.value != '') {
+		// force syncing remote folders
+		if (config.minimumConfig()) {
+			if (folder.updateFolder(rf.id, (rf.parent != undefined ? rf.parent : '0'), name.value, 'y') == true) {
+				statusBar('working');
+				sync.execute(Array('folderAction'));
+			}
+		}
+	}
+	
+	return true;
+  }
+  
   function removeRemoteFolder() {
-	var list = getContactsList();
+	var category = selectedCategory();
+	var list = getListByCategory(category);
 	var listItem = list.selectedItem;
 	  	
 	overwriteConnectionSettings();
@@ -186,6 +298,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	// force syncing remote folders
 	if (config.minimumConfig()) {
 		if (folder.deleteFolder(listItem.lastChild.getAttribute('value'), 'y') == true)
+			statusBar('working');
 			sync.execute(Array('folderAction'));
 	}
   } 
@@ -206,11 +319,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
 
   function remoteFoldersFinish(err) {
-	// contacts
-	var folders = config.getFolders('contacts');
-  	var list = getContactsList();
-
   	// handle buttons
+  	onListBoxSelection();
   	checkConnectionStatus(err);
   	
   	// check last err and send response (modify err object)
@@ -223,61 +333,94 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   		statusBar('inactive');
   		return null;
   	}
-  	
-  	// add or update listitem
-  	for (var i=0; i<folders.length; i++) {
-//  		devTools.writeMsg('options', 'remoteFoldersFinish', 'folders[' + i + '] "' + JSON.stringify(folders[i]) + '"');
-  		var folder = folders[i];
-  		var listItem = getContactsListItem(folder.id);
 
-  		if (listItem != null) {
-  			listItem.lastChild.setAttribute('label', folder.name);
-  			listItem.lastChild.setAttribute('value', folder.id);
-  		} else {
-			var newItem = newListItem(null, '', '', folder.name, folder.id);
-			var cnt = list.childNodes.length;
-			var insertBeforeItem = null;
-			// sort unconfigured remote folders
-			for (var j=0; j<cnt; j++) {
-				if (list.childNodes[j].tagName == 'listitem' && 
-					list.childNodes[j].value == '' &&
-					(list.childNodes[j].lastChild.getAttribute('label') > folder.name ||
-					(list.childNodes[j].lastChild.getAttribute('label') == folder.name && list.childNodes[j].lastChild.getAttribute('value') > folder.id)
-				)) {
-					insertBeforeItem = list.childNodes[j];
-					break;
+  	// for all types
+  	for (var idx in config.categories) {
+  		var category = config.categories[idx];
+		var folders = config.getFolders(category);
+	  	var list = getListByCategory(category);
+	
+	  	// add or update listitem
+	  	for (var i=0; i<folders.length; i++) {
+	//  		devTools.writeMsg('options', 'remoteFoldersFinish', 'folders[' + i + '] "' + JSON.stringify(folders[i]) + '"');
+	  		var folder = folders[i];
+	  		var listItem = getListItemByCategory(category, folder.id);
+	
+	  		// add
+	  		if (listItem != null) {
+	  			listItem.lastChild.setAttribute('label', folder.name);
+	  			listItem.lastChild.setAttribute('value', folder.id);
+			// update
+	  		} else {
+				var newItem = newListItem(null, '', '', folder.name, folder.id);
+				var cnt = list.childNodes.length;
+				var insertBeforeItem = null;
+				// sort unconfigured remote folders
+				for (var j=0; j<cnt; j++) {
+					if (list.childNodes[j].tagName == 'listitem' && 
+						list.childNodes[j].value == '' &&
+						(list.childNodes[j].lastChild.getAttribute('label') > folder.name ||
+						(list.childNodes[j].lastChild.getAttribute('label') == folder.name && list.childNodes[j].lastChild.getAttribute('value') > folder.id)
+					)) {
+						insertBeforeItem = list.childNodes[j];
+						break;
+					}
+				}
+				list.insertBefore(newItem, insertBeforeItem);
+	  		}
+	  	}
+	  	// delete listitem
+		for (var i=0; i<list.childNodes.length; i++)
+			if (list.childNodes[i].tagName == 'listitem') {
+				var listItem = list.childNodes[i];
+				var syncConfig = this.config.parseJSONFromString(listItem.value);
+				var remote = listItem.lastChild.getAttribute('value');
+	
+				if (remote == undefined || remote == null || remote == '')
+					continue;
+				
+				// found deleted folder
+				if (remote != null && config.getFolder(category, remote) == null) {
+					// deconfigure required
+					if (syncConfig != null) {
+						// toDo delete/re-init abook
+						config.removeSyncConfigByCategory(category, syncConfig);
+						listItem.value = undefined;
+						modifyListItem(listItem, null
+								, listItem.firstChild.getAttribute('label'), listItem.firstChild.getAttribute('value')
+								, '', ''
+						);
+					} else
+						list.removeChild(listItem);
 				}
 			}
-			list.insertBefore(newItem, insertBeforeItem);
-  		}
   	}
-  	// delete listitem
-	for (var i=0; i<list.childNodes.length; i++)
-		if (list.childNodes[i].tagName == 'listitem') {
-			var listItem = list.childNodes[i];
-			var syncConfig = this.config.parseJSONFromString(listItem.value);
-			var remote = listItem.lastChild.getAttribute('value');
-
-			if (remote == undefined || remote == null || remote == '')
-				continue;
-			
-			// found deleted folder
-			if (remote != null && config.getFolder('contacts', remote) == null) {
-				// deconfigure required
-				if (syncConfig != null) {
-					// toDo delete/re-init abook
-					config.removeAbSyncConfig(syncConfig);
-				}
-				list.removeChild(listItem);
-			}
-		}
 
 	statusBar('icon');
 	return null;
   }
 
+  function selectedCategory() {
+	var result = null;
+	
+	switch (document.getElementById("ThundertinePreferences").currentPane.id) {
+		case "paneThunderTineContacts":
+			result = 'contacts';
+			break;
+		case "paneThunderTineCalendars":
+			result = 'calendars';
+			break;
+		case "paneThunderTineTasks":
+			result = 'tasks';
+			break;
+	}
+
+	return result;
+  }
+  
   function changeSyncConfig() {
-		var list = getContactsList();
+	  	var category = selectedCategory();
+		var list = getListByCategory(category);
 		var listItem = list.selectedItem;
 		//var selectItems = Array();
 
@@ -286,14 +429,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		
 		// re-init object
 		var configOptions = { };
-		switch (document.getElementById("ThundertinePreferences").currentPane.id) {
-			case "paneThunderTineContacts":
-				configOptions.category = "Addressbook";
-				break;
-			default:
-				configOptions.category = null;
-				break;
-		}
+		configOptions.category = category;
 
 		var syncConfig = this.config.parseJSONFromString(listItem.value);
 		// new config
@@ -303,7 +439,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			
 			// local selected
 			if (listItem.firstChild.getAttribute('label') != '') {
-				//devTools.writeMsg('options', 'getContactsSelection', 'local target');
+				devTools.writeMsg('options', 'getContactsSelection', 'local target');
 				configOptions.selectedItem = "{ \"label\": \"" + listItem.firstChild.getAttribute('label') + "\", \"value\": \"" + listItem.firstChild.getAttribute('value') + "\" }";
 				configOptions.configure = 'local';
 				for (var i=0; i<list.childNodes.length; i++) {
@@ -311,10 +447,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 						configOptions.selectItems.push("{ \"label\": \"" + list.childNodes[i].lastChild.getAttribute('label') + "\", \"value\": \"" + list.childNodes[i].lastChild.getAttribute('value') + "\" }");
 					}
 				}
-				dialog.open(configOptions);
+				if (configOptions.selectItems.length > 0)
+					dialog.open(configOptions);
+				else {
+					createRemoteFolder();
+				}
 			// remote selected
 			} else {
-				//devTools.writeMsg('options', 'getContactsSelection', 'remote target');
+				devTools.writeMsg('options', 'getContactsSelection', 'remote target');
 				configOptions.selectedItem = "{ \"label\": \"" + listItem.lastChild.getAttribute('label') + "\", \"value\": \"" + listItem.lastChild.getAttribute('value') + "\" }";
 				configOptions.configure = 'remote';
 				for (var i=0; i<list.childNodes.length; i++) {
@@ -327,18 +467,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				if (configOptions.selectItems.length > 0)
 					dialog.open(configOptions);
 				else {
-					var addedAb = null;
-					
-					if ((addedAb = newAb()) != null) {
-						// toDo
-					}
+					if (category == 'contacts') {
+						var addedAb = null;
+						
+						if ((addedAb = newAb()) != null) {
+							var abSyncConfig = config.addSyncConfigByCategory(category, addedAb.URI, listItem.lastChild.getAttribute('value'));
+							modifyListItem(listItem, abSyncConfig
+									, addedAb.dirName, addedAb.URI
+									, listItem.lastChild.getAttribute('label'), listItem.lastChild.getAttribute('value')
+							);
+						}
+					} else
+						devTools.writeMsg('options', 'changeSyncConfig', 'not implemented yet!');
 				}
 					
 			}
 		// modify existing config
 		} else {
 			// delete syncConfig
-			this.config.removeAbSyncConfig(syncConfig);
+			this.config.removeSyncConfigByCategory(category, syncConfig);
 			
 			// reinit addressbook
 			
@@ -367,9 +514,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		}
   }
   
-  function processUserSelection(selection) {
+  function processUserSelection(category, selection) {
 	  	//devTools.enter('options', 'processUserSelection', 'selection ' + selection);
-		var list = getContactsList();
+//	  	var category = selectedCategory();
+		var list = getListByCategory(category);
 		var listItem = list.selectedItem;
 
 		var syncConfig = this.config.parseJSONFromString(listItem.value);
@@ -402,8 +550,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				}
 			}
 			
-			//devTools.writeMsg('options', 'processUserSelection', 'addAbSyncConfig');
-			if ((newSyncConfig = this.config.addAbSyncConfig(listItemMerge.localItem.firstChild.getAttribute('value'), listItemMerge.remoteItem.lastChild.getAttribute('value'))) != null) {
+			//devTools.writeMsg('options', 'processUserSelection', 'addSyncConfigByCategory');
+			if ((newSyncConfig = this.config.addSyncConfigByCategory(category, listItemMerge.localItem.firstChild.getAttribute('value'), listItemMerge.remoteItem.lastChild.getAttribute('value'))) != null) {
 				//devTools.writeMsg('options', 'processUserSelection', 'newSyncConfig ' + newSyncConfig);
 				modifyListItem(listItemMerge.localItem, newSyncConfig
 						, listItemMerge.localItem.firstChild.getAttribute('label'), listItemMerge.localItem.firstChild.getAttribute('value')
@@ -419,16 +567,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		//devTools.leave('options', 'processUserSelection');
   }
   
-  function newAb(dontOpenDialog) {
+  function newAb(category, dontOpenDialog) {
 	  var openDialog = (dontOpenDialog == true ? false : true);
 
-	  if (openDialog)
-		  window.openDialog("chrome://messenger/content/addressbook/abAddressBookNameDialog.xul", "", "chrome,modal,resizable=no,centerscreen", null);
+	  if (openDialog) {
+		  if (category == 'contacts')
+			  window.openDialog("chrome://messenger/content/addressbook/abAddressBookNameDialog.xul", "", "chrome,modal,resizable=no,centerscreen", null);
+		  if (category == 'calendars' || category == 'tasks')
+				window.openDialog("chrome://calendar/content/calendarCreation.xul", "caEditServer", "chrome,titlebar,modal,centerscreen", null);
+	  }
 	  
-	  var list = getContactsList();
+	  var list = getListByCategory(category);
 
 	  // search new book
-	  var abs = this.config.getAbs();
+	  var abs = null;
+	  
+	  if (category == 'contacts')
+		  abs = this.config.getAbs();
+	  if (category == 'calendars' || category == 'tasks')
+		  abs = this.config.getCals();
+	  
 	  for (var i=0; i<list.childNodes.length; i++) {
 		  if (list.childNodes[i].tagName != 'listitem')
 			  continue;
@@ -462,7 +620,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 			  // no more local abooks
 			  if (list.childNodes[i].firstChild.getAttribute('label') == '')
-				  idx = i+1;
+				  idx = i;
 			  // local abooks sorted by name
 			  else if (list.childNodes[i].firstChild.getAttribute('label') > abs[0].dirName)
 					  idx = i;
@@ -472,7 +630,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		  	 
 			  if (idx >= 0) {
 				  //devTools.writeMsg('options', 'newAb', 'adding: ' + abs[0].dirName + ' ' + (idx+1) + '/' + list.childNodes.length);
-				  list.insertBefore(newListItem(null, abs[0].dirName, abs[0].URI, '', ''), (list.childNodes.length > idx ? list.childNodes[idx] : null));
+				  // insert new listItem, if dialog was not opened from here 
+				  if (openDialog == false)
+					  list.insertBefore(newListItem(null, abs[0].dirName, abs[0].URI, '', ''), (list.childNodes.length > idx ? list.childNodes[idx] : null));
 				  abs = abs.slice(1);
 				  found = true;
 				  break;
@@ -489,48 +649,34 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
 
   function reInit() {
-	switch (document.getElementById("ThundertinePreferences").currentPane.id) {
-		case "paneThunderTineContacts":
-			  var list = getContactsList();
-			  var listItem = list.selectedItem;
-			  
-			  this.reInitAb(listItem.firstChild.getAttribute('value'));
-			break;
-	}
+	  alert('reInit nicht implementiert!');
   }
   
-  function reInitAb(auri) {
-		if (helper.ask(ttine.strings.getString('reinitializeFolder')))
-			ab.doClearExtraFields(auri);
-  }
-  
-  function onListBoxSelection()
-  {
-		var list = getContactsList();
-		var listItem = list.selectedItem;
-
-		var bSync = document.getElementById('toggleSync');
-		var bReInit = document.getElementById('reinitSync');
-
-		bSync.disabled = bReInit.disabled = (listItem == null);
-		if (listItem == null)
-			return;
-		
-		// unconfigured local addressbook
-		bReInit.disabled = !(listItem.firstChild.getAttribute('label') != '' && listItem.value == ''); 
-  }
-
 // private helper functions
-  function getContactsList() {
-	  return document.getElementById('localContactsFolderMultiple');
+  function getListByCategory(category) {
+	  var result = null;
+	  
+	  switch(category) {
+		  case 'contacts':
+			  result = document.getElementById('localContactsFolderMultiple');
+			  break;
+		  case 'calendars':
+			  result = document.getElementById('localCalendarsFolderMultiple');
+			  break;
+		  case 'tasks':
+			  result = document.getElementById('localTasksFolderMultiple');
+			  break;
+	  }
+	  
+	  return result;
   }
   
-  function getContactsListItem(remoteId) {
-		var list = getContactsList();
+  function getListItemByCategory(category, remoteId) {
+		var list = getListByCategory(category);
 		var result = null;
 		
 		var cnt = list.childNodes.length;
-		for (var i=0; i<cnt; i++)
+		for (var i=0; i<cnt; i++) {
 			if (list.childNodes[i].tagName == 'listitem') {
 				var listItem = list.childNodes[i];
 				var syncConfig = this.config.parseJSONFromString(listItem.value);
@@ -540,11 +686,41 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 					break;
 				}
 			}
+		}
 
-//		devTools.writeMsg('options', 'getContactsListItem', 'remoteId: ' + remoteId + ', result: ' + result + (result != null ? ' ' + result.value : ''));
 		return result;
   }
+  
+  function getContactsList() {
+	  return getListByCategory(config.categories[0]);
+  }
+  
+  function getCalendarsList() {
+	  return getListByCategory(config.categories[1]);
+  }
+  
+  function getTasksList() {
+	  return getListByCategory(config.categories[2]);
+  }
+  
+  function formatSyncStatus(config) {
+	  	var sync = '';
+	  
+	  	if (config != null) {
+	  		devTools.writeMsg('options', 'formatSyncStatus', 'config: ' + JSON.stringify(config));
+	  		if (config.syncKey != undefined) {
+	  			if (config.syncKey > '0') {
+		  			sync = 'ok';
+		  			sync += (config.managedCards != undefined && config.managedCards.length > 0 ? ' (' + config.managedCards.length + ')' : '');
+	  			} else
+	  				sync = 'failed';
+	  		} else
+	  			sync = 'ja';
+	  	}
 
+	  	return sync;
+  }
+  
   function newListItem(config, lLabel, lValue, rLabel, rValue) {
 		var ab = document.createElement('listitem');
 		
@@ -557,8 +733,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			lc.setAttribute('value', lValue);
 		
 		lc = ab.appendChild(document.createElement('listcell'));
-		if (config != null)
-			lc.setAttribute('label', 'ja');
+		lc.setAttribute('label', formatSyncStatus(config));
 
 		lc = ab.appendChild(document.createElement('listcell'));
 		lc.setAttribute('label', rLabel);
@@ -566,8 +741,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			lc.setAttribute('value', rValue);
 		}
 
-		ab.setAttribute('context', 'foldersPopup');
-		
 		return ab;
   }
 
@@ -581,7 +754,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		lc.setAttribute('value', (lValue != '' ? lValue : null));
 		
 		lc = ab.childNodes[1];
-		lc.setAttribute('label', (config != null ? 'ja' : ''));
+		lc.setAttribute('label', formatSyncStatus(config));
 
 		lc = ab.childNodes[2];
 		lc.setAttribute('label', rLabel);
@@ -593,7 +766,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
   function overwriteConnectionSettings() {
 	  var host = document.getElementById('host').value;
-	  var url = (document.getElementById('hostSsl').checked ? 'https://' : 'http://') + host + '/Microsoft-Server-ActiveSync';
+	  var url = (document.getElementById('hostSsl').checked ? 'https://' : 'http://') + host + config.urlSuffix;
 	  var user = document.getElementById('user').value;
 	  var pwd = document.getElementById('password').value;
 	  
@@ -628,8 +801,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
 
   function statusBar(state) {
+	  // values: working, inactive, icon
 	  try {
-		  // values: working, inactive, icon
+		  // handle buttons
+		  if (state == 'working')
+			  onListBoxSelection(true);
+
 		  window.opener.ttine.statusBar(state);
 	  } catch(e) {
 		  

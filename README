@@ -59,3 +59,5 @@ HISTORY
 	support for syncing multiple contact folders added (several modifications under the hood; simplified sync code)
 0.3b	sync contacts complete (minor runtime errors fixed)
 	full support for folder operations (FolderDelete seems to be brocken in tine20)
+0.4a	experimental calendar support (set property extensions.ttine.enableExperimentalCode=true)
+	sync contacts (md5 calculation fixed)

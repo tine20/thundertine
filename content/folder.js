@@ -61,6 +61,24 @@ var folder = {
 //	devTools.leave('folder', 'addSyncInfos');
   },
   
+  serverTypeForCategory: function(category) {
+	  var result = null;
+	  
+	  switch (category) {
+		  case 'contacts':
+			  result = '14';
+			  break;
+		  case 'calendars':
+			  result = '13';
+			  break;
+		  case 'tasks':
+			  result = '15';
+			  break;
+	  }
+	  
+	  return result;
+  },
+  
   serverTypeToLocal: function(serverType) {
 	var type = null;
 	
@@ -322,7 +340,7 @@ var folder = {
 		folders.syncKey = syncKey;
 	}
 	
-	devTools.leave('folder', 'createDeleteOrUpdateFinish', 'folders: syncKey ' + folders.syncKey + ', contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length + (folders.lastSyncDuration != undefined ? ' (' + folders.lastSyncDuration/1000 + ' s)' : ''));
+	devTools.leave('folder', 'createDeleteOrUpdateFinish', 'folders: syncKey ' + folders.syncKey + ', contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length + (folders.lastSyncDuration != undefined ? ' (' + (folders.lastSyncDuration/1000).toFixed(3) + ' s)' : ''));
 	return result;
   }, 
 
@@ -464,7 +482,7 @@ var folder = {
  		}
 	}
 	
-	devTools.leave('folder', 'syncFinish', 'folders: syncKey ' + folders.syncKey + ', contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length + (folders.lastSyncDuration != undefined ? ' (' + folders.lastSyncDuration/1000 + ' s)' : ''));
+	devTools.leave('folder', 'syncFinish', 'folders: syncKey ' + folders.syncKey + ', contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length + (folders.lastSyncDuration != undefined ? ' (' + (folders.lastSyncDuration/1000).toFixed(3) + ' s)' : ''));
 	return true;
   }
 }

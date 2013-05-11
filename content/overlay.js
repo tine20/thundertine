@@ -19,10 +19,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 var ttine = {
+
   // callback variables for optionsResultApplyCallback
   userConfigAction: null,
   userConfigData: null,
-  
+
   onLoad: function() {
     // initialization code
     this.strings = document.getElementById("ttine-strings");
@@ -31,6 +32,9 @@ var ttine = {
 	if (config.minimumConfig())
 		this.initialized = true;
 
+	// init managedCards
+	sync.initManagedCards();
+	
 	// initialize syncTimer
 	this.startSyncTimer();
   },
@@ -46,7 +50,7 @@ var ttine = {
 		helper.prompt(this.strings.getString('syncInProgress'));
 		return false;
 	}
-	
+
 	// stop timer
 	this.stopSyncTimer();
 
@@ -66,8 +70,13 @@ var ttine = {
 	// nothing changed on options dialog (lastUserConfigAction called from options.onclose)
 	if (this.userConfigAction != true) {
 		// store folders
-		if (this.userConfigData != null)
+		if (this.userConfigData != null) {
 			config.mergeFolders(this.userConfigData.jsonSyncConfig.folders);
+			var forceSave = config.remoteCheckConfigs(config.getSyncConfig());
+
+			if (forceSave == true)
+				config.saveSyncConfig();
+		}
 		// restart timer 
 		this.startSyncTimer();
 		return 0;
@@ -76,7 +85,10 @@ var ttine = {
 	// merge syncConfig
 	var connectChanged = false;
 	try {
-		connectChanged = (this.userConfigData.url.split('/', 3)[2].split(':', 1)[0] != config.url.split('/', 3)[2].split(':', 1)[0] || 
+		var curUrl = config.url.replace(config.urlSuffix, '');
+		var newUrl = this.userConfigData.url.replace(config.urlSuffix, '');
+
+		connectChanged = (newUrl.split('://', 2)[1] != curUrl.split('://', 2)[1] || 
 						  this.userConfigData.user != config.user);
 	} catch(e) {
 	}
@@ -91,7 +103,6 @@ var ttine = {
   },
 
   onSync: function(e) {
-//	devTools.enter('ttine', 'onSync', 'lastSyncStatus \'' + sync.lastSyncStatus + '\'');
 	// right mouse click 
 	if(e.button == 2) 
 		this.onMenuItemCommand(e);
@@ -116,12 +127,9 @@ var ttine = {
 	// normally sync
 	} else
 		this.sync();
-
-//	devTools.leave('ttine', 'onSync');
   }, 
 
   statusBar: function(state) { 
-//	devTools.enter("ttine", "statusBar", "status: " + (status == '' ? '<empty>' : status));
 	let statusbar = document.getElementById("status-bar-thundertine");
 	if (state == '' || state == null) {
 		if (sync.inProgress)
@@ -131,10 +139,9 @@ var ttine = {
 		else
 			state = 'icon';
 	}
-	devTools.write("ttine", "statusBar", "state: " + state + ', statusBar: ' + statusbar);
+
 	statusbar.setAttribute("image", "chrome://ttine/skin/ttine_" + state + ".png");
 	statusbar.blur();
-//	devTools.leave("ttine", "statusBar");
   },
 
   sync: function() { 
@@ -144,7 +151,7 @@ var ttine = {
 	}
 
 	this.stopSyncTimer();
-	
+
 	var toDo = Array('start');
 	var folders = config.getFolders();
 	if (config.checkFolderBefore || folders.syncKey == undefined) {
@@ -163,7 +170,7 @@ var ttine = {
 		this.userConfigData = JSON.parse(JSON.stringify(data));
 	}
   },
-  
+
   startSyncTimer: function(delay) {
 	var syncConfig = config.getSyncConfig();
 	// delay initial sync for 10s (spend a little bit time for thunderbird startup)
@@ -171,7 +178,7 @@ var ttine = {
 
     this.timerId = window.setTimeout('ttine.sync();', nextSync);
   },
-  
+
   stopSyncTimer: function() {
 	if(typeof this.timerId == "number") {
 		devTools.writeMsg('ttine', 'stopSyncTimer');
@@ -184,5 +191,3 @@ var ttine = {
 
 window.addEventListener("load", function(e) { ttine.onLoad(e); }, false);
 window.addEventListener("unload", function(e) { ttine.onUnLoad(e); }, false);
-
-

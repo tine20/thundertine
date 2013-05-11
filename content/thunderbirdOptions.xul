@@ -14,10 +14,11 @@
 
   <popupset>
     <menupopup id="foldersPopup" onpopupshowing="return onListBoxContextMenu(event);">
-      <menuitem label="&ttine.remoteCreate;" hidden="true"/>
-      <menuitem label="&ttine.remoteDelete;" oncommand="removeRemoteFolder();"/>
-      <menuitem label="&ttine.remoteUpdate;" hidden="true"/>
-      <menuitem label="&ttine.remoteRefresh;" oncommand="remoteFolders();"/>
+      <menuitem id="cmRemoteRefresh" label="&ttine.remoteRefresh;" oncommand="remoteFolders();"/>
+      <menuseparator/>
+      <menuitem id="cmRemoteCreate" label="&ttine.remoteCreate;" oncommand="createRemoteFolder();"/>
+      <menuitem id="cmRemoteDelete" label="&ttine.remoteDelete;" hidden="true" oncommand="removeRemoteFolder();"/>
+      <menuitem id="cmRemoteUpdate" label="&ttine.remoteUpdate;" hidden="true" oncommand="renameRemoteFolder();"/>
     </menupopup>
   </popupset>
 
@@ -64,26 +65,67 @@
   </prefpane>
 
   <prefpane id="paneThunderTineContacts" label="&ttine.prefwindowToolbarContacts;" image="chrome://ttine/skin/contacts.png">
-        <preferences>
-                <preference id="fullSilencePref" name="extensions.ttine.fullSilence" type="bool"/>
-        </preferences>
         <groupbox>
 			<caption label="&ttine.prefwindowLocalBooks;" />
-        	<listbox id="localContactsFolderMultiple" rows="10" onselect="onListBoxSelection();">
+        	<listbox id="localContactsFolderMultiple" rows="10" onselect="onListBoxSelection();" context="foldersPopup">
         		<listhead>
         			<listheader label="Name" />
         			<listheader label="Sync." />
-        			<listheader label="&ttine.prefwindowRemoteFolders;" />
+        			<listheader label="&ttine.prefwindowRemoteContacts;" />
         		</listhead>
         		<listcols>
         			<listcol flex="10"/>
-        			<listcol flex="1" align="center"/>
+        			<listcol flex="1" center="true"/>
         			<listcol flex="10"/>
         		</listcols>
         	</listbox>
         	<hbox>
-        		<button id="toggleSync" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
-        		<button id="reinitSync" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
+        		<button id="toggleSyncContacts" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
+        		<button id="reinitSyncContacts" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
+        	</hbox>
+        </groupbox>
+  </prefpane>
+
+  <prefpane id="paneThunderTineCalendars" label="&ttine.prefwindowToolbarCalendars;" image="chrome://ttine/skin/calendars.png">
+        <groupbox>
+			<caption label="&ttine.prefwindowLocalCalendars;" />
+        	<listbox id="localCalendarsFolderMultiple" rows="10" onselect="onListBoxSelection();" context="foldersPopup">
+        		<listhead>
+        			<listheader label="Name" />
+        			<listheader label="Sync." />
+        			<listheader label="&ttine.prefwindowRemoteCalendars;" />
+        		</listhead>
+        		<listcols>
+        			<listcol flex="10"/>
+        			<listcol flex="1" center="true"/>
+        			<listcol flex="10"/>
+        		</listcols>
+        	</listbox>
+        	<hbox>
+        		<button id="toggleSyncCalendars" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
+        		<button id="reinitSyncCalendars" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
+        	</hbox>
+        </groupbox>
+  </prefpane>
+
+  <prefpane id="paneThunderTineTasks" label="&ttine.prefwindowToolbarTasks;" image="chrome://ttine/skin/tasks.png">
+        <groupbox>
+			<caption label="&ttine.prefwindowLocalTasks;" />
+        	<listbox id="localTasksFolderMultiple" rows="10" onselect="onListBoxSelection();" context="foldersPopup">
+        		<listhead>
+        			<listheader label="Name" />
+        			<listheader label="Sync." />
+        			<listheader label="&ttine.prefwindowRemoteTasks;" />
+        		</listhead>
+        		<listcols>
+        			<listcol flex="10"/>
+        			<listcol flex="1" center="true"/>
+        			<listcol flex="10"/>
+        		</listcols>
+        	</listbox>
+        	<hbox>
+        		<button id="toggleSyncTasks" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
+        		<button id="reinitSyncTasks" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
         	</hbox>
         </groupbox>
   </prefpane>
@@ -102,6 +144,7 @@
   </prefpane>
 
   <script src="ab.js" type="application/x-javascript;version=1.7" />
+  <script src="cal.js" type="application/x-javascript;version=1.7" />
   <script src="folder.js" type="application/x-javascript;version=1.7" />
   <script src="ashttp.js" type="application/x-javascript;version=1.7" />
   <script src="helper.js" type="application/x-javascript;version=1.7" />

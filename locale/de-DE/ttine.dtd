@@ -7,6 +7,8 @@
 <!ENTITY ttine.prefwindowTitle "Tine 2.0 Sync Einstellungen...">
 <!ENTITY ttine.prefwindowToolbarHost "Host Einrichtung">
 <!ENTITY ttine.prefwindowToolbarContacts "Kontakte">
+<!ENTITY ttine.prefwindowToolbarCalendars "Kalender">
+<!ENTITY ttine.prefwindowToolbarTasks "Aufgaben">
 <!ENTITY ttine.prefwindowToolbarAbout "Über">
 
 <!ENTITY ttine.prefwindowServer "ActiveSync Server-Einstellungen">
@@ -20,17 +22,20 @@
 <!ENTITY ttine.prefwindowInterval2 "Minuten">
 <!ENTITY ttine.prefwindowCheckFolder "überprüfe vor dem Synchronisieren die Ordner auf dem Server">
 <!ENTITY ttine.prefwindowLimitPicSize "Größe der Bilder beschränken (ActiveSync-Standard ~36 KB)">
-<!ENTITY ttine.prefwindowIPhone "Am Server als iPhone ausgeben">
 <!ENTITY ttine.prefwindowFullSilence "Alle Ausgaben unterdrücken, Stille erzwingen">
 
 <!ENTITY ttine.prefwindowLocalBooks "lokale Addressbücher">
+<!ENTITY ttine.prefwindowLocalCalendars "lokale Kalender">
+<!ENTITY ttine.prefwindowLocalTasks "lokale Aufgaben">
 <!ENTITY ttine.prefwindowAddNew "Addressbuch hinzufügen...">
 <!ENTITY ttine.prefwindowReinitialize "gewähltes Buch re-initialisieren">
 <!ENTITY ttine.prefwindowReinitializeText "Buch initialisieren: Wenn Sie ein Addressbuch neu initialisieren, 
 			das zuvor bereits synchronisiert wurde, führt das zu einem erneuten Abgleich aller bestehender
 			Kontakte. Manchmal ist dies erforderlich, damit alle Kontakte wieder synchronisiert werden,
 			es kann jedoch bei nicht-leeren Büchern zu Doppel-Einträgen führen.">
-<!ENTITY ttine.prefwindowRemoteFolders "entfernte Kontakt-Verzeichnisse">
+<!ENTITY ttine.prefwindowRemoteContacts "entfernte Kontakt-Verzeichnisse">
+<!ENTITY ttine.prefwindowRemoteCalendars "entfernte Kalender-Verzeichnisse">
+<!ENTITY ttine.prefwindowRemoteTasks "entfernte Aufgaben-Verzeichnisse">
 <!ENTITY ttine.prefwindowRemoteRefresh "Verzeichnisliste erneuern...">
 
 <!ENTITY ttine.prefwindowAbout1 "Diese Erweiterung gleicht die Kontakte aus einem Thunderbird Addressbuch mit
@@ -48,6 +53,10 @@
 <!ENTITY ttine.syncConfigTitle "Tine 2.0 Sync Konfiguration...">
 <!ENTITY ttine.syncButtonLabel "konfigurieren...">
 
+<!ENTITY ttine.localCaption "Lokal">
+<!ENTITY ttine.localCreate "Anlegen">
+<!ENTITY ttine.localDelete "Löschen">
+<!ENTITY ttine.remoteCaption "Server">
 <!ENTITY ttine.remoteCreate "Anlegen">
 <!ENTITY ttine.remoteDelete "Löschen">
 <!ENTITY ttine.remoteUpdate "Umbenennen">
