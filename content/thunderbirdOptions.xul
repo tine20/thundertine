@@ -81,7 +81,6 @@
         	</listbox>
         	<hbox>
         		<button id="toggleSyncContacts" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
-        		<button id="reinitSyncContacts" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
         	</hbox>
         </groupbox>
   </prefpane>
@@ -103,7 +102,6 @@
         	</listbox>
         	<hbox>
         		<button id="toggleSyncCalendars" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
-        		<button id="reinitSyncCalendars" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
         	</hbox>
         </groupbox>
   </prefpane>
@@ -125,7 +123,6 @@
         	</listbox>
         	<hbox>
         		<button id="toggleSyncTasks" label="&ttine.syncButtonLabel;" oncommand="changeSyncConfig();" disabled="true" />
-        		<button id="reinitSyncTasks" label="&ttine.prefwindowReinitialize;" oncommand="reInit();" disabled="true" />
         	</hbox>
         </groupbox>
   </prefpane>

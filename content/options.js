@@ -174,13 +174,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		var buttons = {};
 		buttons.contacts = {};
 		buttons.contacts.config = document.getElementById('toggleSyncContacts');
-		buttons.contacts.reinit = document.getElementById('reinitSyncContacts');
 		buttons.calendars = {};
 		buttons.calendars.config = document.getElementById('toggleSyncCalendars');
-		buttons.calendars.reinit = document.getElementById('reinitSyncCalendars');
 		buttons.tasks = {};
 		buttons.tasks.config = document.getElementById('toggleSyncTasks');
-		buttons.tasks.reinit = document.getElementById('reinitSyncTasks');
 
 		var folders = config.getFolders();
 		var disableAll = (folder.isResponsePending(folders) == true || (typeof disabled == 'boolean' && disabled == true));
@@ -191,7 +188,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			var listItem = list.selectedItem;
 
 			// disable all
-			buttons[category].config.disabled = buttons[category].reinit.disabled = true;
+			buttons[category].config.disabled = true;
 
 			if ((category == 'calendars' || category == 'tasks') && !config.isCalendarAccessible())
 				continue;
@@ -199,7 +196,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			// selective turn on
 			if (disableAll == false && listItem != null) {
 				buttons[category].config.disabled = false;
-				buttons[category].reinit.disabled = !(listItem.firstChild.getAttribute('label') != '' && listItem.value == '');
 			}
 		}
   }
