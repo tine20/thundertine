@@ -489,12 +489,16 @@ var sync = {
   }, 
 
   createCalendarCollection: function(async) {
-	if (config.enableExperimentalCode == false)
+	if (config.enableExperimentalCode == false) {
+		async.complete = true;
 		return null;
+	}
 
 	// no lightning
-	if (config.isCalendarAccessible() == false)
+	if (config.isCalendarAccessible() == false) {
+		async.complete = true;
 		return null;
+	}
 
 	var cal = config.getCalByUri(async.local, true);
 	// calendar seems to be deleted 
