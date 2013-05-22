@@ -29,6 +29,7 @@ var config = {
   jsonSyncConfig: null,
 
   picDir: 'Photos',
+  keepSyncKeyOnSave: false,
 
   read: function() {
 	// data in thunderbird config
@@ -49,6 +50,7 @@ var config = {
 	this.fullSilence = prefs.getBoolPref('fullSilence');
 	this.enableConsoleOutput = prefs.getBoolPref('enableConsoleOutput');
 	this.enableExperimentalCode = prefs.getBoolPref('enableExperimentalCode');
+	this.keepSyncKeyOnSave = prefs.getBoolPref('keepSyncKeyOnSave');
 	this.jsonSyncConfig = this.getSyncConfig();
 
 	// check for deleted abooks
@@ -320,18 +322,22 @@ var config = {
 			jsonConfigSave[configProps[idx]] = undefined;
 
 	// list of categories
-	var folderTypes = this.categories;
 	// list of properties per category
-	var folderProps = ['syncKey', 'syncStatus', 'managedCards'];
-	for (var idx in folderTypes) {
-		var folderType = folderTypes[idx];
-		var folders = jsonConfigSave[folderType].configured;
+	var folderProps = ['syncKey', 'syncStatus', 'managedCards']; 
+	for (var idx in this.categories) {
+		var category = this.categories[idx];
+		var folders = jsonConfigSave[category].configured;
 
 		// for each element
 		for (var i=0; i<folders.length; i++) {
 			var folder = folders[i];
 			for (var pdx in folderProps) {
 				var folderProp = folderProps[pdx];
+			
+				// don't reset syncKey
+				if (this.keepSyncKeyOnSave == true && folderProp == 'syncKey')
+					continue;
+				
 				if (folder.hasOwnProperty(folderProp))
 					folder[folderProp] = undefined;
 			}
@@ -366,6 +372,15 @@ var config = {
 	if (newSyncConfig.missingCalendarNotified != undefined)
 		this.getSyncConfig().missingCalendarNotified = newSyncConfig.missingCalendarNotified; 
 
+	// default options
+	// data in thunderbird config
+	var prefs = Components.classes['@mozilla.org/preferences-service;1'].
+			getService(Components.interfaces.nsIPrefService);
+	prefs = prefs.getBranch('extensions.ttine.');
+
+	this.fullSilence = prefs.getBoolPref('fullSilence');
+	this.keepSyncKeyOnSave = prefs.getBoolPref('keepSyncKeyOnSave');
+	
 	this.saveSyncConfig();
 	devTools.leave('config', 'mergeSyncConfig');
   },

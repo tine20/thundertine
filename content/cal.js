@@ -27,22 +27,17 @@ var ttineCal = {
 	"Calendar_Timezone": 			"",
 	"Calendar_AllDayEvent": 		"startDate.isDate",
 	"Calendar_DtStamp": 			"creationDate",
-	"Calendar_UID": 				"",
 	"Calendar_OrganizerName": 		"ORGANIZER.commonName",
 	"Calendar_OrganizerEmail": 		"ORGANIZER.id",
-	"Calendar_Sensitivity": 		"",
 	"Calendar_BusyStatus": 			"",
 	"Calendar_Reminder": 			"alarmOffset",
-	"Calendar_MeetingStatus": 		"", //"status",
-	"Calendar_Attendees": 			"",
+	"Calendar_Attendees": 			"ATTENDEES",
 	"Calendar_Attendee": 			"",
 	"Calendar_Email": 				"",
 	"Calendar_Name": 				"",
 	"Calendar_AttendeeStatus": 		"",
 	"Calendar_AteendeeType": 		"",
-	"Calendar_Categories":			"",
-	"Calendar_Category":			"",
-	"Calendar_Recurrence":			"",
+	"Calendar_Recurrence":			"recurrenceInfo",
 	"Calendar_Type":				"",
 	"Calendar_Until":				"",
 	"Calendar_Interval":			"",
@@ -52,6 +47,47 @@ var ttineCal = {
 	"Calendar_WeekOfMonth":			"",
 	"Calendar_MonthOfYear":			"",
 	"AirSyncBase_Body":				"DESCRIPTION"
+  },
+  attendeeRole: {
+	'CHAIR':						0,
+  	'REQ-PARTICIPANT':				1,
+  	'OPT-PARTICIPANT':				2,
+  	'NON-PARTICIPANT':				3
+  },
+  attendeeUserType: {
+	'INDIVIDUAL':					1,
+	'GROUP':						2,
+	'RESOURCE':						3,
+	'ROOM':							3,
+	'UNKNOWN':						-1
+  },
+  attendeeStatus: {
+	'NEEDS-ACTION': 				0,
+	'ACCEPTED': 					3,
+	'DECLINED': 					4,
+	'TENTATIVE': 					2,
+	'DELEGATED':					2,
+	'COMPLETED':					3,
+	'IN-PROCESS':					5
+  },
+  recurrenceType: {
+	'DAILY':						0,
+	'WEEKLY':						1,
+	'MONTHLY':						2,
+	'MONTHLYDAY':					3,
+	'YEARLY':						5,
+	'YEARLYDAY':					6
+  },
+  recurrenceDayOfWeek: {
+	'day1':							0x01, 	// Sunday
+	'day2':							0x02, 	// Monday
+	'day3':							0x04, 	// Thuesday
+	'day4':							0x08,	// Wednesday
+	'day5':							0x10,	// Thursday
+	'day6':							0x20,	// Friday
+	'day7':							0x40,	// Saturday
+	'LastOfMonth':					0x7f,  
+	'WorkingDays':					0x3e	// Monday to Friday 
   },
 
   supportedDom: function() {
@@ -150,6 +186,7 @@ var ttineCal = {
 		} 
 	} catch(e) {
 		devTools.writeMsg('ttineCal', 'commandsDom', 'error: ' + e);
+		async.aborted = true;
 	}
 	
 	async.complete = true;
@@ -196,17 +233,19 @@ var ttineCal = {
 				data.appendChild(field);
 				if (hasTimezone == false && card.hasProperty(tbField) && card[tbField] instanceof Components.interfaces.calIDateTime) {
 					data.appendChild(doc.createElement('Calendar_Timezone'));
-					// todo convert
 					hasTimezone = true;
 				}
 			}
 		}
-		var attendees = card.getAttendees({});
-		for (var idx in attendees)
-			devTools.writeMsg('ttineCal', 'asDom', idx + ' name: ' + attendees[idx].commonname + ', id: ' + attendees[idx].id + ' (' + (attendees[idx].isOrganizer ? 'y' : 'n') + ')');
-		var categories = card.getCategories({});
-		for (var idx in categories)
-			devTools.writeMsg('ttineCal', 'asDom', idx + ' category: ' + categories[idx]);
+		// attendees
+		var attendeesNode = this.getAttendeesAsDom(card, doc);
+		if (attendeesNode != null)
+			data.appendChild(attendeesNode);
+		// recurrence
+		var recurrenceNode = this.getRecurrenceAsDom(card, doc);
+		if (recurrenceNode != null)
+			data.appendChild(recurrenceNode);
+		
 		// calculate meta data and build command
 		try {
 			if (clientId != null) {
@@ -261,6 +300,9 @@ var ttineCal = {
 			//if (organizer != null && organizer != undefined)
 			//	result = card.getProperty('ORGANIZER')[pSubName];
 			break;
+		case 'ATTENDEES':
+		case 'recurrenceInfo':
+			break;
 		case 'alarmOffset':
 			var alarms = card.getAlarms({});
 			if (alarms.length > 0)
@@ -295,14 +337,35 @@ var ttineCal = {
 
 			if (tbValue != '' && tbValue != null) 
 				md5text = md5text + tbValue;
-		} 
+		}
+		// attendees
+		var attendees = this.getAttendees(card);
+		for (var idx in attendees)
+			md5text = md5text + attendees[idx]['email'] + attendees[idx]['name'] + attendees[idx]['status'] + attendees[idx]['userType'];
+		// recurrence
+		var recurrence = this.getRecurrence(card);
+		if (recurrence != null) {// toDo more fields
+			md5text = md5text + recurrence['type'] + recurrence['interval'];
+			if (recurrence['count'] != undefined)
+				md5text = md5text + recurrence['count'];
+			if (recurrence['untilDate'] != undefined)
+				md5text = md5text + recurrence['untilDate'];
+			if (recurrence['dayOfWeek'] != undefined)
+				md5text = md5text + recurrence['dayOfWeek'];
+			if (recurrence['dayOfMonth'] != undefined)
+				md5text = md5text + recurrence['dayOfMonth'];
+			if (recurrence['weekOfMonth'] != undefined)
+				md5text = md5text + recurrence['weekOfMonth'];
+			if (recurrence['monthOfYear'] != undefined)
+				md5text = md5text + recurrence['monthOfYear'];
+		}
+
 		result = ttineCal.md5hash(md5text);
 		
 		if (typeof report == 'boolean' && report == true && result != card.getProperty('TineSyncMD5')) {
 			devTools.writeMsg('ttineCal', 'md5hashForCard', card.getProperty('TineSyncId') + ', in: \'' + md5text + '\'\n\tmd5: ' + result + '\n\told: ' + card.getProperty('TineSyncMD5'));
 		}
-	} else
-		devTools.writeMsg('ttineCal', 'md5hashForCard', 'in: not instanceof Components.interfaces.calIEvent');
+	}
 	
 	return result;
   },
@@ -400,6 +463,7 @@ var ttineCal = {
 				card = Components.classes["@mozilla.org/calendar/event;1"].
 						createInstance(Components.interfaces.calIEvent);  
 				card.setProperty('TineSyncId', id);
+				// to avoid runtime problems set mandatory default
 				card['startDate'] = ttineCal.getCalIDateTimeFromString('19700101T000000Z');
 			}
 
@@ -416,7 +480,7 @@ var ttineCal = {
 				
 				var tbField = this.mapActiveSyncToThunderbird[asField];
 				
-				if (tbField == '')
+				if (tbField == '' || tbField == undefined)
 					continue;
 				
 				try {
@@ -444,10 +508,15 @@ var ttineCal = {
 							alarm.offset.normalize();
 							break;
 						case 'DESCRIPTION':
-							// toDo better parse
-							//var type = childNode.firstChild.firstChild.nodeValue;
-							asValue = childNode.lastChild.firstChild.nodeValue;
-							card.setProperty(pName, asValue);
+							var descriptions = helper.doEvaluateXPath(childNode, "//AirSyncBase_Data");
+							if (descriptions.length >= 0)
+								card.setProperty(pName, descriptions[0].firstChild.nodeValue);
+							break;
+						case 'ATTENDEES':
+							this.getAttendeesFromDom(card, cards[parentCardIdx], childNode);
+							break;
+						case 'recurrenceInfo':
+							this.getRecurrenceFromDom(card, cards[parentCardIdx], childNode);
 							break;
 						default:
 							if (pName.toUpperCase() != pName)
@@ -511,16 +580,16 @@ var ttineCal = {
 					for (var idx in alarms)
 						result.deleteAlarm(alarms[idx]);
 					break;
+				case 'recurrenceInfo':
+					result[pName] = null;
+					break;
 				default:
-					if (pName.toUpperCase() == pName) // && card.getProperty(pName) != undefined)
+					if (pName.toUpperCase() == pName)
 						result.deleteProperty(pName);
 					break;
 			}
 		}
-		result.setCategories(0, []);
 		result.removeAllAttendees();
-		result.removeAllAttachments();
-		result.removeAllRelations();
 	} catch(e) {
 		devTools.writeMsg('ttineCal', 'getCleanCardClone', 'error: ' + e);
 	}
@@ -559,6 +628,440 @@ var ttineCal = {
 		alarm = alarms[0];
 	
 	return alarm;
+  },
+
+  getRecurrenceFromDom: function(card, oldCard, recurrenceNode) {
+	try {
+		var recurrence = {};
+		
+		for (var idx in recurrenceNode.childNodes) {
+			var childNode = recurrenceNode.childNodes[idx];
+			
+			var asField = null, asValue = null;
+			
+			switch (childNode.nodeName) {
+				case 'Calendar_Type':
+					asField = 'type';
+					for (var type in this.recurrenceType)
+						if (this.recurrenceType[type] == childNode.firstChild.nodeValue) {
+							asValue = type;
+							break;
+						}
+					break;
+				case 'Calendar_Interval':
+					asField = 'interval';
+					break;
+				case 'Calendar_Occurrences':
+					asField = 'count';
+					asValue = parseInt(childNode.firstChild.nodeValue, 10);
+					asValue = (asValue >= 999 ? -1 : asValue);
+					break;
+				case 'Calendar_Until':
+					asField = 'untilDate';
+					asValue = this.getCalIDateTimeFromString(childNode.firstChild.nodeValue);
+					break;
+				case 'Calendar_DayOfWeek':
+					asField = 'dayOfWeek';
+					break;
+				case 'Calendar_DayOfMonth':
+					asField = 'dayOfMonth';
+					break;
+				case 'Calendar_WeekOfMonth':
+					asField = 'weekOfMonth';
+					break;
+				case 'Calendar_MonthOfYear':
+					asField = 'monthOfYear';
+					break;
+				default:
+					continue;
+					break;
+			}
+
+			if (asValue == null)
+				asValue = parseInt(childNode.firstChild.nodeValue, 10);
+			if (asField != null) {
+				recurrence[asField] = asValue;
+			}
+		}
+		
+		devTools.writeMsg('ttineCal', 'recurrenceFromDom', 'recurrence: ' + JSON.stringify(recurrence));
+		var recurrenceInfo = Components.classes["@mozilla.org/calendar/recurrence-info;1"].
+				createInstance(Components.interfaces.calIRecurrenceInfo);
+		var recurrenceRule = Components.classes["@mozilla.org/calendar/recurrence-rule;1"].
+				createInstance(Components.interfaces.calIRecurrenceRule);
+		var asComponent = null;
+		
+		recurrenceInfo.item = card;
+
+		// set basic settings
+		recurrenceRule.interval = recurrence.interval;
+		if (recurrence.count != undefined)
+			recurrenceRule.count = recurrence.count; 
+		if (recurrence.untilDate != undefined)
+			recurrenceRule.untilDate = recurrence.untilDate;
+
+		asValue = [];
+		switch (this.recurrenceType[recurrence.type]) {
+			case this.recurrenceType.DAILY:
+				devTools.writeMsg('ttineCal', 'recurrenceFromDom', 'DAILY: ');
+				break;
+			case this.recurrenceType.WEEKLY:
+				if (recurrence.dayOfWeek == undefined)
+					for (var i=1; i<=7; i++)
+						asValue.push(i);
+				else
+					for (var i=1; i<=7; i++)
+						if (recurrence.dayOfWeek & this.recurrenceDayOfWeek['day' + i])
+							asValue.push(i);
+				
+				// working days
+				if (asValue.length == 5 && recurrence.dayOfWeek == this.recurrenceDayOfWeek.WorkingDays) {
+					recurrence.type = 'DAILY';
+				}
+				asComponent = 'BYDAY';
+				break;
+			case this.recurrenceType.MONTHLY:
+				if (recurrence.dayOfWeek != undefined)
+					asValue.push((recurrence.dayOfWeek == this.recurrenceDayOfWeek.LastOfMonth ? -1 : dayOfWeek));
+				if (recurrence.dayOfMonth != undefined)
+					asValue.push(recurrence.dayOfMonth);
+
+				asComponent = 'BYMONTHDAY';
+				break;
+			case this.recurrenceType.MONTHLYDAY:
+				if (recurrence.dayOfWeek != this.recurrenceDayOfWeek.LastOfMonth) {
+					recurrence.type = 'MONTHLY';
+					
+					for (var i=1; i<=7; i++)
+						if (recurrence.dayOfWeek & this.recurrenceDayOfWeek['day' + i]) {
+							asValue.push(i);
+							break;
+						}
+					if (asValue.length == 0)
+						throw new Error('mapping failed!');
+
+					if (recurrence.weekOfMonth != undefined && recurrence.weekOfMonth <= 4)
+						asValue[0] += recurrence.weekOfMonth * 8; // 9 to 47
+					if (recurrence.weekOfMonth != undefined && recurrence.weekOfMonth == 5)
+						asValue[0] = -1 * (asValue[0] + 8); // -9 to -15
+					asComponent = 'BYDAY';
+				}
+				break;
+			case this.recurrenceType.YEARLY:
+				if (recurrence.dayOfMonth != undefined && recurrence.monthOfYear != undefined) {
+					recurrenceRule.setComponent('BYMONTH', 1, [recurrence.monthOfYear]);
+					asValue.push(recurrence.dayOfMonth);
+					asComponent = 'BYMONTHDAY';
+				}
+				break;
+			case this.recurrenceType.YEARLYDAY:
+				if (recurrence.dayOfWeek != undefined && recurrence.weekOfMonth != undefined && recurrence.monthOfYear) {
+					recurrence.type = 'YEARLY';
+					recurrenceRule.setComponent('BYMONTH', 1, [recurrence.monthOfYear]);
+
+					for (var i=1; i<=7; i++)
+						if (recurrence.dayOfWeek & this.recurrenceDayOfWeek['day' + i]) {
+							asValue.push(i);
+							break;
+						}
+					if (asValue.length == 0)
+						throw new Error('mapping failed!');
+
+					if (recurrence.weekOfMonth <= 4)
+						asValue[0] += recurrence.weekOfMonth * 8; // 9 to 47
+					if (recurrence.weekOfMonth == 5)
+						asValue[0] = -1 * (asValue[0] + 8); // -9 to -15
+					asComponent = 'BYDAY';
+				}
+				break;
+		}
+
+		// at least the mapped type and component
+		recurrenceRule.type = recurrence.type;
+		if (asComponent != null && asValue.length > 0)
+			recurrenceRule.setComponent(asComponent, asValue.length, asValue);
+		
+		recurrenceInfo.appendRecurrenceItem(recurrenceRule);
+		card.recurrenceInfo = recurrenceInfo;
+	} catch(e) {
+		devTools.writeMsg('ttineCal', 'getRecurrenceFromDom', 'error: ' + e + '\ndom: ' + wbxml.domStr(recurrenceNode));
+		// keep old values
+		card.recurrenceInfo = null;
+	}
+  },
+  
+  getRecurrenceAsDom: function(card, doc) {
+	var recurrence = this.getRecurrence(card);
+	var result = null;
+	
+	if (recurrence != null) {
+		result = doc.createElement('Calendar_Recurrence');
+
+		devTools.writeMsg('ttineCal', 'getRecurrenceAsDom', 'recurrence: ' + JSON.stringify(recurrence));
+		for (var property in recurrence) {
+			var name = '';
+			switch (property) {
+				case 'type':
+					name = 'Calendar_Type';
+					break;
+				case 'interval':
+					name = 'Calendar_Interval';
+					break;
+				case 'count':
+					name = 'Calendar_Occurrences';
+					break;
+				case 'untilDate':
+					name = 'Calendar_Until';
+					break;
+				case 'dayOfWeek':
+					name = 'Calendar_DayOfWeek';
+					break;
+				case 'dayOfMonth':
+					name = 'Calendar_DayOfMonth';
+					break;
+				case 'weekOfMonth':
+					name = 'Calendar_WeekOfMonth';
+					break;
+				case 'monthOfYear':
+					name = 'Calendar_MonthOfYear';
+					break;
+				default:
+					continue;
+					break;
+			}
+			//devTools.writeMsg('ttineCal', 'getRecurrenceAsDom', property + ': ' + recurrence[property] + ' -> ' + name);
+			if (name != '') {
+				result.appendChild(doc.createElement(name));
+				result.lastChild.appendChild(doc.createTextNode(recurrence[property]));
+			}
+		}
+		devTools.writeMsg('ttineCal', 'getRecurrenceAsDom', 'result: ' + wbxml.domStr(result));
+	}
+	
+	return result;
+  },
+
+  getRecurrence: function(card) {
+	var result = null;
+
+	try {
+		if (card['recurrenceInfo'] != null) {
+			var recurrences = card['recurrenceInfo'].getRecurrenceItems({});
+			devTools.writeMsg('ttineSync', 'getRecurrence', 'recurrences: #' + recurrences.length);
+			var recurrence = recurrences[0];
+	
+			result = {};
+			
+			result.type = this.recurrenceType[recurrence.type];
+			result.interval = recurrence.interval;
+			if (recurrence.isByCount == true) {
+				result.count = (recurrence.count == -1 ? 999 : recurrence.count);
+				result.count = (result.count > 999 ? 999 : result.count);
+			}
+			if (recurrence.isByCount == false && recurrence.untilDate != null) {
+				var untilDate = Components.classes["@mozilla.org/calendar/datetime;1"].
+						createInstance(Components.interfaces.calIDateTime);
+				untilDate.resetTo(recurrence.untilDate.year, recurrence.untilDate.month, recurrence.untilDate.day, 23, 59, 59, calendarDefaultTimezone());
+				result.untilDate = this.getStringFromCalIDateTime(untilDate);
+			}
+			var component = null;
+			if ((result.type == this.recurrenceType.DAILY || result.type == this.recurrenceType.WEEKLY) && (component = recurrence.getComponent('BYDAY', {})) != null) {
+				result.dayOfWeek = 0;
+				for (var i in component)
+					result.dayOfWeek += (this.recurrenceDayOfWeek['day' + component[i]] != undefined ? this.recurrenceDayOfWeek['day' + component[i]] : 0);
+
+				// parse failed
+				if (result.dayOfWeek == 0 || result.dayOfWeek == this.recurrenceDayOfWeek.LastOfMonth)
+					result.dayOfWeek = undefined;
+				// dayOfWeek doesn't work with daily type
+				else if (result.type == this.recurrenceType.DAILY)
+					result.type = this.recurrenceType.WEEKLY;
+			}
+			if (result.type == this.recurrenceType.MONTHLY && (component = recurrence.getComponent('BYDAY', {})) != null && component.length > 0) {
+				devTools.writeMsg('ttineCal', 'getRecurrence', 'monthly: BYDAY ' + JSON.stringify(component));
+				// all the fucking stuff each, first, second ... last sunday
+				if (component.length == 1 && this.recurrenceDayOfWeek['day' + (Math.abs(component[0]) % 8)] != undefined) {
+					result.dayOfWeek = this.recurrenceDayOfWeek['day' + (Math.abs(component[0]) % 8)];
+					if (component[0] < 0)
+						result.weekOfMonth = 5;
+					if (component[0] > 7)
+						result.weekOfMonth = ((component[0] / 8) >> 0);
+
+					result.type = (result.weekOfMonth != undefined ? this.recurrenceType.MONTHLYDAY : this.recurrenceType.WEEKLY);
+				// not supported yet
+				} else
+					return null;
+			}
+			if (result.type == this.recurrenceType.MONTHLY && (component = recurrence.getComponent('BYMONTHDAY', {})) != null && component.length > 0) {
+				devTools.writeMsg('ttineCal', 'getRecurrence', 'monthly: BYMONTHDAY ' + JSON.stringify(component));
+				// last day of month
+				if (component.length == 1 && component[0] == -1)
+					result.dayOfWeek = this.recurrenceDayOfWeek.LastOfMonth;
+				// one day of month
+				else if (component.length == 1 && component[0] >= 1 && component[0] <= 31)
+					result.dayOfMonth = component[0];
+				// each day of month
+				else if (component.length == 31) {
+					result.type = this.recurrenceType.DAILY;
+				// list of days in month not supported yet
+				} else
+					return null;
+			}
+			if (result.type == this.recurrenceType.YEARLY) {
+				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYDAY      ' + recurrence.getComponent('BYDAY', {}));
+				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYMONTHDAY ' + recurrence.getComponent('BYMONTHDAY', {}));
+				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYYEARDAY  ' + recurrence.getComponent('BYYEARDAY', {}));
+				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYWEEKNO   ' + recurrence.getComponent('BYWEEKNO', {}));
+				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYMONTH    ' + recurrence.getComponent('BYMONTH', {}));
+			}
+			var month = null, day = null;
+			if (result.type == this.recurrenceType.YEARLY && (month = recurrence.getComponent('BYMONTH', {})) != null && month.length > 0 && 
+					(day = recurrence.getComponent('BYMONTHDAY', {})) != null && day.length > 0) {
+				result.dayOfMonth = day[0];
+				result.monthOfYear = month[0];
+			}
+			if (result.type == this.recurrenceType.YEARLY && (month = recurrence.getComponent('BYMONTH', {})) != null && month.length > 0 && 
+					(day = recurrence.getComponent('BYDAY', {})) != null && day.length > 0) {
+				// all the fucking stuff each, first, second ... last sunday
+				if (day.length == 1 && this.recurrenceDayOfWeek['day' + (Math.abs(day[0]) % 8)] != undefined) {
+					result.monthOfYear = month[0];
+					result.dayOfWeek = this.recurrenceDayOfWeek['day' + (Math.abs(day[0]) % 8)];
+					if (day[0] < 0)
+						result.weekOfMonth = 5;
+					if (day[0] > 7)
+						result.weekOfMonth = ((day[0] / 8) >> 0);
+					result.type = this.recurrenceType.YEARLYDAY;
+				} else
+					return null;
+			}
+		}
+	} catch(e) {
+		devTools.writeMsg('ttineCal', 'getRecurrence', 'error: ' + e);
+	}
+	
+	return result;
+  },
+	  
+  getAttendeesFromDom: function(card, oldCard, attendeesNode) {
+	var attendees = helper.doEvaluateXPath(attendeesNode, "//Calendar_Attendee");
+	for (var idx in attendees) {
+		try {
+			var attendee = attendees[idx];
+			var email = helper.doEvaluateXPath(attendee, "//Calendar_Email");
+
+			// missing mandatory
+			if (email.length == 0)
+				continue;
+
+			email = 'mailto:' + helper.unescapeNodeValue(email[0].firstChild.nodeValue);
+			var existingAttendee = (oldCard != undefined ? oldCard.getAttendeeById(email) : null);
+			var newAttendee = null; 
+				
+			// create new attendee if not found 
+			if (existingAttendee == null) {
+				newAttendee = Components.classes["@mozilla.org/calendar/attendee;1"].
+					createInstance(Components.interfaces.calIAttendee);
+			// clone existing attendee
+			} else
+				newAttendee = existingAttendee.clone();
+			
+			// write defaults
+			newAttendee.id = email;
+			newAttendee.deleteProperty('commonName');
+			newAttendee.deleteProperty('participationStatus');
+			newAttendee.deleteProperty('userType');
+			
+			for (var i in attendee.childNodes) {
+				var child = attendee.childNodes[i];
+
+				switch (child.nodeName) {
+					case 'Calendar_Name':
+						newAttendee.setProperty('commonName', helper.unescapeNodeValue(child.firstChild.nodeValue));
+						break;
+					case 'Calendar_AttendeeStatus':
+						for (var status in this.attendeeStatus)
+							if (this.attendeeStatus[status] == child.firstChild.nodeValue) {
+								newAttendee.setProperty('participationStatus', status);
+								break;
+							}
+						break;
+					case 'Calendar_AttendeeType':
+						for (var userType in this.attendeeUserType)
+							if (this.attendeeUserType[userType] == child.firstChild.nodeValue) {
+								newAttendee.setProperty('userType', userType);
+								break;
+							}
+						break;
+				}
+			}
+			
+			card.addAttendee(newAttendee);
+		} catch(e) {
+			devTools.writeMsg('ttineCal', 'getAttendeesFromDom', '#' + idx + ': error ' + e);
+		}
+	}
+  },
+  
+  getAttendeesAsDom: function(card, doc) {
+	var result = null;
+	var attendees = this.getAttendees(card);
+	
+	for (var idx in attendees) {
+		if (result == null)
+			result = doc.createElement('Calendar_Attendees');
+
+		var attendee = doc.createElement('Calendar_Attendee');
+		for (var property in attendees[idx]) {
+			var name = '';
+			switch (property) {
+				case 'email':
+					name = 'Calendar_Email';
+					break;
+				case 'name':
+					name = 'Calendar_Name';
+					break;
+				case 'status':
+					name = 'Calendar_AttendeeStatus';
+					break;
+				case 'userType':
+					name = 'Calendar_AttendeeType';
+					break;
+				default:
+					continue;
+					break;
+			}
+			
+			if (attendees[idx][property] != '') {
+				attendee.appendChild(doc.createElement(name));
+				attendee.lastChild.appendChild(doc.createTextNode(attendees[idx][property]));
+			}
+		}
+		result.appendChild(attendee);
+	}
+	
+	return result;
+  },
+  
+  getAttendees: function(card) {
+	var result = [];
+
+	var attendees = card.getAttendees({});
+	for (var idx in attendees) {
+		var attendee = {};
+		attendee.email = (attendees[idx].id != undefined ? attendees[idx].id.replace('mailto:', '') : '');
+		attendee.name = (attendees[idx].commonName != undefined ? attendees[idx].commonName : '');
+		attendee.status = (attendees[idx].participationStatus != undefined && 
+				this.attendeeStatus[attendees[idx].participationStatus] != undefined ? this.attendeeStatus[attendees[idx].participationStatus] : '');
+		attendee.role = (attendees[idx].role != undefined && 
+				this.attendeeRole[attendees[idx].role] != undefined ? this.attendeeRole[attendees[idx].role] : 1);
+		attendee.userType = (attendees[idx].userType != undefined && 
+				this.attendeeUserType[attendees[idx].userType] != undefined &&
+				this.attendeeUserType[attendees[idx].userType] >= 0 ? this.attendeeUserType[attendees[idx].userType] : 1);
+		
+		result.push(attendee);
+	}
+
+	return result;
   },
 
   getCalIDateTimeFromString: function(dateString) {

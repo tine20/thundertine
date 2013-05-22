@@ -122,7 +122,7 @@ var folder = {
 			devTools.writeMsg('folders', 'serverTypeToLocal', 'unkonwn folder type: ' + serverType);
 			break;
 	}
-
+	
 	return type;
   },
   
@@ -157,7 +157,7 @@ var folder = {
 		return false;
 	}
 	
-	folders.action = { }
+	folders.action = { };
 	folders.action.name = name;
 	if (pServerId != undefined)
 		folders.action.pServerId = pServerId;
@@ -482,7 +482,14 @@ var folder = {
  		}
 	}
 	
+	// check configured remote folders
+	try {
+		ttine.checkConfiguredRemoteFolder();
+	} catch(e) {
+		devTools.writeMsg('folder', 'syncFinish', 'ttine.checkConfiguredRemoteFolder: error ' + e);
+	}
+	
 	devTools.leave('folder', 'syncFinish', 'folders: syncKey ' + folders.syncKey + ', contacts ' + folders.contacts.length + ', calendars '+ folders.calendars.length + ', tasks '+ folders.tasks.length + (folders.lastSyncDuration != undefined ? ' (' + (folders.lastSyncDuration/1000).toFixed(3) + ' s)' : ''));
 	return true;
   }
-}
+};

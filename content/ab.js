@@ -342,7 +342,7 @@ var ttineAb = {
 
 	result = this.md5hash(md5text);
 
-	devTools.writeMsg('ttineAb', 'md5hashForCard', card.getProperty('TineSyncId', '') + ', in: \'' + md5text + '\', out: ' + result);
+	//devTools.writeMsg('ttineAb', 'md5hashForCard', card.getProperty('TineSyncId', '') + ', in: \'' + md5text + '\', out: ' + result);
 	return result;
   },
 

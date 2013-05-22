@@ -27,6 +27,7 @@
 		<preference id="hostPref" name="extensions.ttine.host" type="string"/>
 		<preference id="hostSslPref" name="extensions.ttine.hostSsl" type="bool"/>
 		<preference id="syncBeforeClosePref" name="extensions.ttine.syncBeforeClose" type="bool"/>
+		<preference id="keepSyncKeyOnSavePref" name="extensions.ttine.keepSyncKeyOnSave" type="bool" />
 		<preference id="checkFolderBeforePref" name="extensions.ttine.checkFolderBefore" type="bool"/>
 		<preference id="syncIntervalPref" name="extensions.ttine.syncInterval" type="int"/>
 		<preference id="userPref" name="extensions.ttine.user" type="string"/>
@@ -53,6 +54,7 @@
 		<groupbox>
 			<caption label="&ttine.prefwindowSyncOptions;" />
 			<checkbox label="&ttine.prefwindowBeforeClose;" preference="syncBeforeClosePref"/>
+	        <checkbox label="&ttine.prefwindowFullSyncOnInit;" preference="keepSyncKeyOnSavePref" />
 			<hbox align="center">
 				<label value="&ttine.prefwindowInterval1;" />
 				<textbox preference="syncIntervalPref" id="syncInterval" min="5" size="2"/>

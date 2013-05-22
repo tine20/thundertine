@@ -9,6 +9,7 @@ pref("extensions.ttine.contactsLimitPictureSize", true);
 pref("extensions.ttine.fullSilence", false);
 pref("extensions.ttine.enableConsoleOutput", false);
 pref("extensions.ttine.enableExperimentalCode", false);
+pref("extensions.ttine.keepSyncKeyOnSave", false);
 pref("extensions.ttine.jsonSyncConfig", "{ \"version\": \"1.0\", \"contacts\": { \"configured\": [ ] }, \"calendars\": { \"configured\": [ ] }, \"tasks\": { \"configured\": [ ] } }");
 
 // for installation

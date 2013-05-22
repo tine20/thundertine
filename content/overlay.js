@@ -42,6 +42,8 @@ var ttine = {
   onUnLoad: function() {
 	if (config.syncBeforeClose)
 		this.sync();
+	devTools.writeMsg('overlay', 'onUnLoad','saving config');
+	config.saveSyncConfig();
   },
 
   onMenuItemCommand: function(e) { 
@@ -72,10 +74,7 @@ var ttine = {
 		// store folders
 		if (this.userConfigData != null) {
 			config.mergeFolders(this.userConfigData.jsonSyncConfig.folders);
-			var forceSave = config.remoteCheckConfigs(config.getSyncConfig());
-
-			if (forceSave == true)
-				config.saveSyncConfig();
+			this.checkConfiguredRemoteFolder();
 		}
 		// restart timer 
 		this.startSyncTimer();
@@ -101,32 +100,53 @@ var ttine = {
 	this.startSyncTimer(0);
 	return 0;
   },
+  
+  checkConfiguredRemoteFolder: function() {
+	devTools.writeMsg('ttine', 'checkConfiguredRemoteFolder');
+	if (config.remoteCheckConfigs(config.getSyncConfig()) == true) {
+		devTools.writeMsg('ttine', 'checkConfiguredRemoteFolder', 'saving syncConfig: configured remote folder has been removed on server side');
+		config.saveSyncConfig();
+	}
+  },
 
   onSync: function(e) {
+	devTools.writeMsg('ttine', 'onSync', 'lastSyncStatus: ' + sync.lastSyncStatus);
 	// right mouse click 
 	if(e.button == 2) 
 		this.onMenuItemCommand(e);
 	// left click, if error is present
-	else if (sync.lastSyncStatus != 1 && sync.lastSyncStatus != 0) {
-		if (!isNaN(sync.lastSyncStatus)) {
-			var serverResponse = this.strings.getString('serverResponse')+'\n'+errortxt.sync['code'+sync.lastStatus];
-			if (sync.lastSyncStatus==3 || sync.lastSyncStatus==7) {
-				if (helper.ask(serverResponse+'\n\n'+this.strings.getString('serverReturnZero'))) {
-					// reset folders
+	else if (!isNaN(sync.lastSyncStatus)) {
+			var serverResponse = this.strings.getString('serverResponse');
+			switch (sync.lastSyncStatus) {
+				case -1:	// upload error
 					config.initFolders();
 					this.sync();
-				}
-			} else {
-				helper.prompt(serverResponse+'\n\n'+this.strings.getString('serverRecovery'));
-				this.statusBar();
+					break;
+				case 0:
+				case 1:
+					this.sync();
+					break;
+				case 3:
+				case 7:
+					if (helper.ask(serverResponse+'\n\n'+this.strings.getString('serverReturnZero'))) {
+						// reset folders
+						config.initFolders();
+						this.sync();
+					}
+					break;
+				default:
+					helper.prompt(serverResponse+'\n\n'+this.strings.getString('serverRecovery'));
+					this.statusBar();
+					// reset syncStatus
+					sync.lastSyncStatus = undefined;
+					break;
 			}
-		} else {
-			helper.prompt(this.strings.getString('serverResponse')+'\n'+sync.lastSyncStatus);
-			this.statusBar();
-		}
-	// normally sync
-	} else
-		this.sync();
+	} else {
+		helper.prompt(this.strings.getString('serverResponse')+'\n'+sync.lastSyncStatus);
+		this.statusBar();
+		// reset syncStatus
+		sync.lastSyncStatus = undefined;
+	}
   }, 
 
   statusBar: function(state) { 

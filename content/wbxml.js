@@ -186,8 +186,8 @@ var wbxml = {
 	'Calendar_Recurrence',
 	'Calendar_Type',
 	'Calendar_Until',
-	'Calendar_Interval',
 	'Calendar_Occurrences',
+	'Calendar_Interval',
 	'Calendar_DayOfWeek',
 	// --
 	'Calendar_DayOfMonth',
@@ -348,10 +348,10 @@ var wbxml = {
 			xml = xml + '</' + lastTags.pop()+ '>';
 		}
 		else if (c>=0x05) {
-//			var msg = '';
+			var msg = '';
+			var tag = null, inside = true;
 //			try {
 				// remove type addition from tags
-				var inside = true;
 //				msg += 'c: 0x' + c.toString(16);
 				if(c > 0xC0) c = c - 0xC0;
 				else if(c > 0x80) { c = c - 0x80; inside=false; }
@@ -363,7 +363,7 @@ var wbxml = {
 				var acp = this.codePages[page]; 
 //				msg += ', acp: ' + acp;
 				var acp_i = 0;
-				var tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
+				tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
 				// scan all tokens until the one for the right codepage is found
 				if(page > 0) {
 					while (acp_i < this.tags.length && tag.substr(0, acp.length) != acp ) { 

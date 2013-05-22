@@ -102,7 +102,6 @@ var helper = {
                          .getService(Components.interfaces.nsIPromptService);
 
       var check = {value: false};
-
 	  return promptService.prompt(window, ttine.strings.getString("messageTitle"), txt, input, null, check);
   },
 
@@ -118,14 +117,23 @@ var helper = {
 
 	    var bFlag = (promptService.BUTTON_POS_0) * (promptService.BUTTON_TITLE_YES) + (promptService.BUTTON_POS_1) * (promptService.BUTTON_TITLE_NO);
 	    var result = promptService.confirmEx(window, ttine.strings.getString("messageTitle"), txt, bFlag, null, null, null, null, { 'value': false });
-
 	    return (result == 0);
   },
 
-  /*
-   * The following functions are only for the ease of development. 
-   * They have no functional sense.
-   */
+  unescapeNodeValue: function(nodeValue) {
+	var result = nodeValue;
+
+	if (result != undefined) {
+		result = result.replace(/&lt;/g, '<');
+		result = result.replace(/&gt;/g, '>');
+		result = result.replace(/&amp;/g, '&');
+	}
+
+	return result;
+  },
+
+  // The following functions are only for the ease of development. 
+  // They have no functional sense.
 
   debugDom: function(dom) {
 	if (dom == null) {
@@ -176,18 +184,6 @@ var helper = {
 	}
 
 	alert(res);
-  },
-  
-  unescapeNodeValue: function(nodeValue) {
-	var result = nodeValue;
-
-	if (result != undefined) {
-		result = result.replace(/&lt;/g, '<');
-		result = result.replace(/&gt;/g, '>');
-		result = result.replace(/&amp;/g, '&');
-	}
-	
-	return result;
   }
 
 };

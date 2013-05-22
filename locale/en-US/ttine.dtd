@@ -23,6 +23,7 @@
 <!ENTITY ttine.prefwindowCheckFolder "check remote folders before syncing">
 <!ENTITY ttine.prefwindowLimitPicSize "limit picture size (ActiveSync standard ~36 KB)">
 <!ENTITY ttine.prefwindowFullSilence "Disable all output, getting full silence">
+<!ENTITY ttine.prefwindowFullSyncOnInit "Skip full synchronization at startup">
 
 <!ENTITY ttine.prefwindowLocalBooks "local address books">
 <!ENTITY ttine.prefwindowLocalCalendars "local calenders">

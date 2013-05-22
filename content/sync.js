@@ -182,6 +182,7 @@ var sync = {
 				var selConf = list.configured[i];
 				if (selConf.syncKey == undefined)
 					selConf.syncKey = 0;
+
 				// skip already synced syncConfigs
 				if (forceInitAddedConfigs && selConf.syncKey > 0)
 					continue;
