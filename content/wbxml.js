@@ -303,7 +303,7 @@ var wbxml = {
 		return null;
 
 	var page = 0; var cmd = ''; 
-	var xml = '<?xml version="1.0" encoding="utf-8"?>'; var lastTags = new Array();
+	var xml = '<?xml version="1.0" encoding="utf-8"?>', lastTags = new Array(), inString = null;
 	for(var i=4; i<wbxml.length; i++) {
 		var c = wbxml.charCodeAt(i); 
 		// following bytes
@@ -339,16 +339,16 @@ var wbxml = {
 		}
 		else if (c==0x03) {
 			// string follows
-			var inString = '';
+			inString = '';
 			cmd = 'inString';
 			continue;
 		}
 		else if (c==0x01) {
 			// end tag
-			xml = xml + '</' + lastTags.pop()+ '>';
+			xml = xml + '</' + lastTags.pop() + '>';
 		}
 		else if (c>=0x05) {
-			var msg = '';
+//			var msg = '';
 			var tag = null, inside = true;
 //			try {
 				// remove type addition from tags
@@ -460,11 +460,12 @@ var wbxml = {
 	if (typeof command == 'undefined')
 		command = 'Sync'; 
 
+	var wbxml = null;
 	if (typeof xml == 'string') {
-		var wbxml = this.doWbxml(xml);
+		wbxml = this.doWbxml(xml);
 	} else {
 		var serializer = new XMLSerializer();
-		var wbxml = this.doWbxml( serializer.serializeToString(xml) );
+		wbxml = this.doWbxml( serializer.serializeToString(xml) );
 	}
 
 	// request
@@ -486,7 +487,7 @@ var wbxml = {
 				if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
 					helper.prompt(ttine.strings.getString('notTine'));
 			} else {
-				err = {}
+				err = {};
 				err.reason = 'http';
 				err.status = req.status;
 				err.statusText = req.statusText;
@@ -494,17 +495,15 @@ var wbxml = {
 
 			sync.dispatch(req, err);
 		} 
-	}
+	};
 	req.upload.onerror = function (e) {
-		helper.prompt("Error " + e.target.status + " occurred while uploading.");
-		var err = {}
+		var err = {};
 		err.reason = 'upload';
 		err.status = -1;
-		err.statusText = e.target.status;
+		err.statusText = (e.target != undefined && e.target.status != undefined ? e.target.status : 'no status for upload error available!');
 		sync.dispatch(req, err);
-	}
+	};
 	req.sendAsBinary(wbxml);
   }, 
 
-}
-
+};

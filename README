@@ -18,9 +18,8 @@ later versions try to cover these questions, too.
 FEATURES
 
 By now ThunderTine syncs address books with Tine 2.0 contacts folder inside tine.
-Experimental calendar synchronisation supports the following features: 
-title, location, date/time, attendees, alarm, recurrence (excl. more than one day per month/year). 
-For testing preference extensions.ttine.enableExperimentalCode needs to be set to true.
+Calendar synchronisation supports the following features: 
+title, location, date/time, description, attendees, alarm (limited to 1; only before start yet), recurrence (excl. more than one day per month/year). 
 
 There's no tasks synchronisation by the time of writing.
 
@@ -64,3 +63,4 @@ HISTORY
 	full support for folder operations (FolderDelete seems to be brocken in tine20)
 0.4a	experimental calendar support (set preference extensions.ttine.enableExperimentalCode=true)
 	sync contacts (md5 calculation fixed)
+0.4b	calendar support complete

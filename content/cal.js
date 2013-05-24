@@ -797,7 +797,7 @@ var ttineCal = {
 	if (recurrence != null) {
 		result = doc.createElement('Calendar_Recurrence');
 
-		devTools.writeMsg('ttineCal', 'getRecurrenceAsDom', 'recurrence: ' + JSON.stringify(recurrence));
+		//devTools.writeMsg('ttineCal', 'getRecurrenceAsDom', 'recurrence: ' + JSON.stringify(recurrence));
 		for (var property in recurrence) {
 			var name = '';
 			switch (property) {
@@ -835,7 +835,7 @@ var ttineCal = {
 				result.lastChild.appendChild(doc.createTextNode(recurrence[property]));
 			}
 		}
-		devTools.writeMsg('ttineCal', 'getRecurrenceAsDom', 'result: ' + wbxml.domStr(result));
+		//devTools.writeMsg('ttineCal', 'getRecurrenceAsDom', 'result: ' + wbxml.domStr(result));
 	}
 	
 	return result;
@@ -847,7 +847,7 @@ var ttineCal = {
 	try {
 		if (card['recurrenceInfo'] != null) {
 			var recurrences = card['recurrenceInfo'].getRecurrenceItems({});
-			devTools.writeMsg('ttineSync', 'getRecurrence', 'recurrences: #' + recurrences.length);
+			//devTools.writeMsg('ttineSync', 'getRecurrence', 'recurrences: #' + recurrences.length);
 			var recurrence = recurrences[0];
 	
 			result = {};
@@ -878,7 +878,7 @@ var ttineCal = {
 					result.type = this.recurrenceType.WEEKLY;
 			}
 			if (result.type == this.recurrenceType.MONTHLY && (component = recurrence.getComponent('BYDAY', {})) != null && component.length > 0) {
-				devTools.writeMsg('ttineCal', 'getRecurrence', 'monthly: BYDAY ' + JSON.stringify(component));
+				//devTools.writeMsg('ttineCal', 'getRecurrence', 'monthly: BYDAY ' + JSON.stringify(component));
 				// all the fucking stuff each, first, second ... last sunday
 				if (component.length == 1 && this.recurrenceDayOfWeek['day' + (Math.abs(component[0]) % 8)] != undefined) {
 					result.dayOfWeek = this.recurrenceDayOfWeek['day' + (Math.abs(component[0]) % 8)];
@@ -893,7 +893,7 @@ var ttineCal = {
 					return null;
 			}
 			if (result.type == this.recurrenceType.MONTHLY && (component = recurrence.getComponent('BYMONTHDAY', {})) != null && component.length > 0) {
-				devTools.writeMsg('ttineCal', 'getRecurrence', 'monthly: BYMONTHDAY ' + JSON.stringify(component));
+				//devTools.writeMsg('ttineCal', 'getRecurrence', 'monthly: BYMONTHDAY ' + JSON.stringify(component));
 				// last day of month
 				if (component.length == 1 && component[0] == -1)
 					result.dayOfWeek = this.recurrenceDayOfWeek.LastOfMonth;
@@ -906,13 +906,6 @@ var ttineCal = {
 				// list of days in month not supported yet
 				} else
 					return null;
-			}
-			if (result.type == this.recurrenceType.YEARLY) {
-				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYDAY      ' + recurrence.getComponent('BYDAY', {}));
-				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYMONTHDAY ' + recurrence.getComponent('BYMONTHDAY', {}));
-				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYYEARDAY  ' + recurrence.getComponent('BYYEARDAY', {}));
-				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYWEEKNO   ' + recurrence.getComponent('BYWEEKNO', {}));
-				devTools.writeMsg('ttineCal', 'getRecurrence', 'yearly: BYMONTH    ' + recurrence.getComponent('BYMONTH', {}));
 			}
 			var month = null, day = null;
 			if (result.type == this.recurrenceType.YEARLY && (month = recurrence.getComponent('BYMONTH', {})) != null && month.length > 0 && 

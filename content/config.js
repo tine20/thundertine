@@ -264,6 +264,7 @@ var config = {
 		switch (action) {
 			case 'start':
 				syncConfig.lastSyncDuration = undefined;
+				syncConfig.lastSyncTimeComplete = syncConfig.lastSyncTime;
 				syncConfig.lastSyncTime = Date.now();
 				break;
 			case 'stop':
@@ -316,7 +317,7 @@ var config = {
 
 	// remove temporary stuff
 	// list of properties
-	var configProps = ['folders', 'lastSyncTime', 'lastSyncDuration', 'lastSyncStatus', 'lastMergeAddedNewConfigs', 'missingCalendarNotified'];
+	var configProps = ['folders', 'lastSyncTime', 'lastSyncTimeComplete', 'lastSyncDuration', 'lastSyncStatus', 'lastMergeAddedNewConfigs', 'missingCalendarNotified'];
 	for (var idx in configProps)
 		if (jsonConfigSave.hasOwnProperty(configProps[idx]))
 			jsonConfigSave[configProps[idx]] = undefined;
@@ -478,6 +479,9 @@ var config = {
   },
 
   initFolders: function(syncConfig) {
+	if (syncConfig == undefined)
+		syncConfig = this.getSyncConfig();
+	
 	if (syncConfig.folders == undefined) {
 		syncConfig.folders = { };
 		syncConfig.folders.syncKey = undefined;
@@ -632,6 +636,7 @@ var config = {
 		result = JSON.parse(jsonString);
 	} catch (e) {
 		//devTools.writeMsg('config', 'parseJSONFromString', e + ' ' + jsonString);
+		;
 	}
 
 	return result;

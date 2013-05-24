@@ -58,7 +58,7 @@ var helper = {
   },
 
   file2dom: function(filename) {
-//	devTools.enter('helper', 'file2dom', 'filename: ' + filename);
+	//devTools.enter('helper', 'file2dom', 'filename: ' + filename);
 	var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"]
 		.createInstance(Components.interfaces.nsIFileInputStream); 
 	 var cstream = Components.classes["@mozilla.org/intl/converter-input-stream;1"]  
@@ -78,12 +78,12 @@ var helper = {
 		cstream.close();
 		fstream.close();
 	} catch(e) {
-//		devTools.leave('helper', 'file2dom', 'exception: ' + e);
+		//devTools.leave('helper', 'file2dom', 'exception: ' + e);
 		return false;
 	}
 	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
 		.createInstance(Components.interfaces.nsIDOMParser); 
-//	devTools.leave('helper', 'file2dom');
+	//devTools.leave('helper', 'file2dom');
 	return parser.parseFromString(data, "text/xml"); 
   }, 
 
@@ -134,20 +134,21 @@ var helper = {
 
   // The following functions are only for the ease of development. 
   // They have no functional sense.
-
   debugDom: function(dom) {
 	if (dom == null) {
 		alert('Dom is empty!');
-	} else {
-		var serializer = new XMLSerializer();
-		var pretty = null;
-		try {
-			pretty = serializer.serializeToString(dom);
-		} catch (err) {
-			pretty = "This is not a DOM structure!\n\n"+err;
-		}
-		alert(pretty); 
+		return null;
 	}
+
+	var serializer = new XMLSerializer();
+	var pretty = null;
+	try {
+		pretty = serializer.serializeToString(dom);
+	} catch (err) {
+		pretty = "This is not a DOM structure!\n\n"+err;
+	}
+	alert(pretty); 
+	return null;
   },
 
   debugOut: function(data) {
@@ -172,15 +173,16 @@ var helper = {
 	let cards = addressBook.childCards;
 	while (cards.hasMoreElements()) { 
 		let card = cards.getNext();
-		if (card instanceof Components.interfaces.nsIAbCard) { 
-			res = res + card.getProperty("DisplayName", "")+"\n";
-			res = res + card.getProperty("TineSyncId", "")+"\n";
-			res = res + card.getProperty("TineSyncMD5", "")+"\n";
-			res = res + card.getProperty("PhotoURI", "")+"\n";
-			res = res + card.getProperty("PhotoType", "")+"\n";
-			res = res + card.getProperty("PhotoName", "")+"\n";
-			res = res + "==============================================\n";
-		}
+		if (!(card instanceof Components.interfaces.nsIAbCard))
+			continue;
+		
+		res = res + card.getProperty("DisplayName", "")+"\n";
+		res = res + card.getProperty("TineSyncId", "")+"\n";
+		res = res + card.getProperty("TineSyncMD5", "")+"\n";
+		res = res + card.getProperty("PhotoURI", "")+"\n";
+		res = res + card.getProperty("PhotoType", "")+"\n";
+		res = res + card.getProperty("PhotoName", "")+"\n";
+		res = res + "==============================================\n";
 	}
 
 	alert(res);

@@ -115,13 +115,9 @@ var ttine = {
 	if(e.button == 2) 
 		this.onMenuItemCommand(e);
 	// left click, if error is present
-	else if (!isNaN(sync.lastSyncStatus)) {
+	else {
 			var serverResponse = this.strings.getString('serverResponse');
 			switch (sync.lastSyncStatus) {
-				case -1:	// upload error
-					config.initFolders();
-					this.sync();
-					break;
 				case 0:
 				case 1:
 					this.sync();
@@ -135,17 +131,10 @@ var ttine = {
 					}
 					break;
 				default:
-					helper.prompt(serverResponse+'\n\n'+this.strings.getString('serverRecovery'));
+					helper.prompt(serverResponse+'\n\n'+sync.lastSyncStatus);
 					this.statusBar();
-					// reset syncStatus
-					sync.lastSyncStatus = undefined;
 					break;
 			}
-	} else {
-		helper.prompt(this.strings.getString('serverResponse')+'\n'+sync.lastSyncStatus);
-		this.statusBar();
-		// reset syncStatus
-		sync.lastSyncStatus = undefined;
 	}
   }, 
 
@@ -168,6 +157,10 @@ var ttine = {
 	// if other thread is already running quit
 	if (sync.inProgress || !this.initialized) {
 		return false;
+	}
+	
+	if (sync.lastSyncStatus == 'upload' && this.uploadRetry == true) {
+		this.uploadRetry = false;
 	}
 
 	this.stopSyncTimer();
@@ -196,6 +189,7 @@ var ttine = {
 	// delay initial sync for 10s (spend a little bit time for thunderbird startup)
 	var nextSync = (typeof delay == 'number' ? delay : (syncConfig.lastSyncTime == undefined ? 10000 : config.interval));
 
+	//devTools.writeMsg('ttine', 'startSyncTimer', 'nextSync: ' + nextSync/1000);
     this.timerId = window.setTimeout('ttine.sync();', nextSync);
   },
 

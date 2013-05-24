@@ -19,8 +19,7 @@
  */
 
 var ttineAb = {
-
-  category: 'contacts',
+	category: 'contacts',
   mapActiveSyncToThunderbird: {
   // mapping table for ActiveSync(property) -> Thunderbird(value)
   // ActiveSync						 Thunderbird		// additional ActiveSync settings

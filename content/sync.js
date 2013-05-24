@@ -114,6 +114,7 @@ var sync = {
 			}
 			this.dispatcher.splice(0,1);
 			this.lastSyncStatus = 1;
+			ttine.uploadRetry = undefined;
 			break;
 		default:
 			this.dispGoTo = '';
@@ -140,9 +141,27 @@ var sync = {
 	// save timestamp sync finsish
 	config.addSyncInfos('failed');
 
+	var initialized = false, state = 'error';
+	if (reason == 'upload') {
+		var syncConfig = config.getSyncConfig(); 
+		devTools.writeMsg('sync', 'failed', 'upload: ' + syncConfig.lastSyncTimeComplete + ' ' + Date.now() + ' ' + (Date.now() - syncConfig.lastSyncTimeComplete) + ' ' + (config.interval + 30000));
+		// restart upload, if timer fires after hibernate
+		if (syncConfig.lastSyncTimeComplete != undefined && (Date.now() - syncConfig.lastSyncTimeComplete) > (config.interval + 30000) && ttine.uploadRetry != true) {
+			ttine.uploadRetry = initialized = true;
+			state = 'upload';
+			this.lastSyncStatus = 0;
+			ttine.startSyncTimer(30000);
+		// otherwise display error
+		} else
+			helper.prompt('Error occurred while uploading.\n\n' + txt);
+		
+		// reset syncStatus to default
+		this.lastSyncStatus = 0;
+	}
+
 	sync.inProgress = false;
-	ttine.initialized = false;
-	ttine.statusBar('error');
+	ttine.initialized = initialized;
+	ttine.statusBar(state);
   }, 
 
   runExtraSync: function() {
@@ -334,18 +353,23 @@ var sync = {
 	
 					if (selCollection.length > 0) {
 						var status = helper.doEvaluateXPath(selCollection[0], "//Status");
-		//				devTools.writeMsg('sync', 'response', 'status[0]: ' + wbxml.domStr(status[0]));
-						if (status[0].firstChild.nodeValue == 7)
-							selConfig.syncStatus = 7;
-						else if (status[0].firstChild.nodeValue != 1) {
-		//					devTools.leave("sync", "response", "status: " + status[0].firstChild.nodeValue);
-							selConfig.syncStatus = status[0].firstChild.nodeValue;
-							continue;
-						} 
+						selConfig.syncStatus = parseInt(status[0].firstChild.nodeValue, 10);
+
+						switch (selConfig.syncStatus) {
+							case 1:
+							case 7:
+								break;
+							default:
+								devTools.writeMsg('sync', 'response', 'remote: ' + remote + ', status: ' + selConfig.syncStatus);
+								continue;
+								break;
+						}
 	
 						var syncKey = helper.doEvaluateXPath(selCollection[0], "//SyncKey");
 						if(typeof syncKey[0].firstChild.nodeValue != 'undefined')
 							selConfig.syncKey = syncKey[0].firstChild.nodeValue;
+
+						devTools.writeMsg('sync', 'response', 'remote: ' + remote + ', syncKey: ' + selConfig.syncKey + ', status: ' + selConfig.syncStatus);
 	
 						var async = {complete: false};
 						async.category = category;
@@ -360,7 +384,7 @@ var sync = {
 							continue;
 						}
 					} else {
-						devTools.writeMsg('sync', 'response', 'no data for remote ' + remote);
+						devTools.writeMsg('sync', 'response', 'remote: ' + remote + ', empty response');
 					}
 				}
 			}
@@ -490,11 +514,6 @@ var sync = {
   }, 
 
   createCalendarCollection: function(async) {
-	if (config.enableExperimentalCode == false) {
-		async.complete = true;
-		return null;
-	}
-
 	// no lightning
 	if (config.isCalendarAccessible() == false) {
 		async.complete = true;
@@ -605,22 +624,25 @@ var sync = {
 			var cStatus = -1; var cServerId = null; var cClientId = null;
 			for (var c = 0; c < cardDom.childNodes.length; c++) {
 				if (cardDom.childNodes[c].nodeName == 'Status')
-					cStatus = cardDom.childNodes[c].firstChild.nodeValue;
+					cStatus = parseInt(cardDom.childNodes[c].firstChild.nodeValue, 10);
 				else if (cardDom.childNodes[c].nodeName == 'ServerId')
 					cServerId = cardDom.childNodes[c].firstChild.nodeValue;
 				else if (cardDom.childNodes[c].nodeName == 'ClientId')
 					cClientId = cardDom.childNodes[c].firstChild.nodeValue;
 			}
 
-			if (cStatus != 1) {
-				if (cStatus == 8) {
+			switch (cStatus) {
+				case 1:
+					break;
+				case 8:
 					ttineAb.removeCard(uri, (cServerId ? cServerId : cClientId));
-				}
-				continue;
+				default:
+					continue;
+					break;
 			} 
 
 			if (cardDom.nodeName == 'Add')
-				ttineAb.responseCard(uri, cClientId, Array("TineSyncId", 'TineSyncMD5'), Array(cServerId, '') ); 
+				ttineAb.responseCard(uri, cClientId, Array('TineSyncId', 'TineSyncMD5'), Array(cServerId, '') ); 
 			else if (cardDom.nodeName == 'Change')
 				ttineAb.responseCard(uri, cServerId, Array('TineSyncMD5'), Array('') );
 		}
