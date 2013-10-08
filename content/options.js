@@ -435,7 +435,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 			
 			// local selected
 			if (listItem.firstChild.getAttribute('label') != '') {
-				devTools.writeMsg('options', 'getContactsSelection', 'local target');
+				devTools.writeMsg('options', 'changeSyncConfig', 'local target');
 				configOptions.selectedItem = "{ \"label\": \"" + listItem.firstChild.getAttribute('label') + "\", \"value\": \"" + listItem.firstChild.getAttribute('value') + "\" }";
 				configOptions.configure = 'local';
 				for (var i=0; i<list.childNodes.length; i++) {
@@ -450,7 +450,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				}
 			// remote selected
 			} else {
-				devTools.writeMsg('options', 'getContactsSelection', 'remote target');
+				devTools.writeMsg('options', 'changeSyncConfig', 'remote target');
 				configOptions.selectedItem = "{ \"label\": \"" + listItem.lastChild.getAttribute('label') + "\", \"value\": \"" + listItem.lastChild.getAttribute('value') + "\" }";
 				configOptions.configure = 'remote';
 				for (var i=0; i<list.childNodes.length; i++) {
@@ -466,7 +466,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 					if (category == 'contacts') {
 						var addedAb = null;
 						
-						if ((addedAb = newAb()) != null) {
+						if ((addedAb = newAb(category, false)) != null) {
 							var abSyncConfig = config.addSyncConfigByCategory(category, addedAb.URI, listItem.lastChild.getAttribute('value'));
 							modifyListItem(listItem, abSyncConfig
 									, addedAb.dirName, addedAb.URI
@@ -546,9 +546,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 				}
 			}
 			
-			//devTools.writeMsg('options', 'processUserSelection', 'addSyncConfigByCategory');
+			devTools.writeMsg('options', 'processUserSelection', 'addSyncConfigByCategory: ' + JSON.stringify(listItemMerge));
 			if ((newSyncConfig = this.config.addSyncConfigByCategory(category, listItemMerge.localItem.firstChild.getAttribute('value'), listItemMerge.remoteItem.lastChild.getAttribute('value'))) != null) {
-				//devTools.writeMsg('options', 'processUserSelection', 'newSyncConfig ' + newSyncConfig);
+				devTools.writeMsg('options', 'processUserSelection', 'newSyncConfig ' + newSyncConfig);
 				modifyListItem(listItemMerge.localItem, newSyncConfig
 						, listItemMerge.localItem.firstChild.getAttribute('label'), listItemMerge.localItem.firstChild.getAttribute('value')
 						, listItemMerge.remoteItem.lastChild.getAttribute('label'), listItemMerge.remoteItem.lastChild.getAttribute('value')

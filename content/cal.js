@@ -472,7 +472,7 @@ var ttineCal = {
 			
 			// apply server data
 			var cnt = appDataDom.childNodes.length;
-
+			
 			for (var i=0; i<cnt; i++) {
 				var childNode = appDataDom.childNodes[i];
 				var asField = childNode.nodeName;
@@ -495,7 +495,8 @@ var ttineCal = {
 						case 'startDate':
 						case 'endDate':
 							if (pSubName == undefined)
-								card[pName] = ttineCal.getCalIDateTimeFromString(asValue);
+								if (!(card.startDate.isDate && pName == 'endDate'))
+									card[pName] = ttineCal.getCalIDateTimeFromString(asValue);
 							else
 								card[pName][pSubName] = (asValue == '1');
 							break;

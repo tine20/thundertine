@@ -143,14 +143,14 @@ var sync = {
 
 	var initialized = false, state = 'error';
 	if (reason == 'upload') {
-		var syncConfig = config.getSyncConfig(); 
-		devTools.writeMsg('sync', 'failed', 'upload: ' + syncConfig.lastSyncTimeComplete + ' ' + Date.now() + ' ' + (Date.now() - syncConfig.lastSyncTimeComplete) + ' ' + (config.interval + 30000));
+		var syncConfig = config.getSyncConfig();
+		var retryDelay = 60000;
 		// restart upload, if timer fires after hibernate
-		if (syncConfig.lastSyncTimeComplete != undefined && (Date.now() - syncConfig.lastSyncTimeComplete) > (config.interval + 30000) && ttine.uploadRetry != true) {
+		if (syncConfig.lastSyncTimeComplete != undefined && (Date.now() - syncConfig.lastSyncTimeComplete) > (config.interval + retryDelay) && ttine.uploadRetry != true) {
 			ttine.uploadRetry = initialized = true;
 			state = 'upload';
 			this.lastSyncStatus = 0;
-			ttine.startSyncTimer(30000);
+			ttine.startSyncTimer(retryDelay);
 		// otherwise display error
 		} else
 			helper.prompt('Error occurred while uploading.\n\n' + txt);

@@ -93,7 +93,7 @@ var dialog = {
 			dialogOptionLabel.label = ttine.strings.getString('syncConfigLocal' + this.prefSuffix);
 
 			// new entry at the end of list
-			this.addSelectOption('[' + ttine.strings.getString('addNewMenuItem') + ']', null);
+			this.addSelectOption('[' + ttine.strings.getString('addNewMenuItem') + ']', '');
 		}
 	  }
   },
@@ -126,7 +126,8 @@ var dialog = {
 	  if (flag == true) {
 		  var selectedValue = selectedOption.getAttribute('value');
 			 
-		  if (this.category == 'contacts' || this.category == 'calendars' || this.category == 'tasks')
+		  devTools.writeMsg('dialog', 'onDialogClose', 'category: ' + this.category + ', selectedValue: ' + selectedValue);
+		  if (this.category == 'contacts' || this.category == 'calendars' || this.category == 'tasks') {
 			  // new option selected
 			  if (selectedValue == '') {
 				  // open modal dialog from here
@@ -146,9 +147,10 @@ var dialog = {
 				  this.addSelectOption(addedAb.dirName, addedAb.URI, selectedOption);
 				  dialogSelectOptions.selectedIndex -= 1;
 				  selectedValue = addedAb.URI;
-				  return false;
 			  }
-		  window.opener.processUserSelection(this.category, selectedValue);
+			  
+			  window.opener.processUserSelection(this.category, selectedValue);
+		  }
 	  }
 
 	  return true;
