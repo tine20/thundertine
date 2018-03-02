@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<!DOCTYPE overlay SYSTEM "chrome://ttine/locale/ttine.dtd">
+
+<dialog id="ThundertineDialog"
+	title="&ttine.syncConfigTitle;"
+	buttons="accept,cancel"
+	minwidth="320"
+	minheight="240"
+	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+	onload="dialog.onOpen();"
+	ondialogaccept="return dialog.onDialogClose(true);"
+	ondialogcancel="return dialog.onDialogClose(false);">
+
+	<vbox>
+		<label id="dialogLabel"></label>
+		<groupbox>
+			<caption  id="dialogOptionLabel" label="remote Verzeichnis" />
+        	<menulist id="dialogSelectOptions">
+        		<menupopup>
+	        		<menuitem label="Book 1" />
+        		</menupopup>
+        	</menulist>
+		</groupbox>
+	</vbox>
+
+  <script src="ab.js" type="application/x-javascript;version=1.7" />
+  <script src="cal.js" type="application/x-javascript;version=1.7" />
+  <script src="folder.js" type="application/x-javascript;version=1.7" />
+  <script src="ashttp.js" type="application/x-javascript;version=1.7" />
+  <script src="helper.js" type="application/x-javascript;version=1.7" />
+  <script src="wbxml.js" type="application/x-javascript;version=1.7" />
+  <script src="config.js" type="application/x-javascript;version=1.7" />
+  <script src="sync.js" type="application/x-javascript;version=1.7" />
+  <script src="options.js" type="application/x-javascript;version=1.7" />
+  <script src="devTools.js" type="application/x-javascript;version=1.7" />
+  <script src="dialog.js" type="application/x-javascript;version=1.7" />
+
+</dialog>
+

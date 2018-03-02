@@ -10,9 +10,12 @@
   <script src="folder.js" type="application/x-javascript;version=1.7" />
   <script src="config.js" type="application/x-javascript;version=1.7" />
   <script src="ab.js" type="application/x-javascript;version=1.7" />
+  <script src="cal.js" type="application/x-javascript;version=1.7" />
   <script src="sync.js" type="application/x-javascript;version=1.7" />
   <script src="errortxt.js" type="application/x-javascript;version=1.7" />
   <script src="overlay.js" type="application/x-javascript;version=1.7" />
+  <script src="devTools.js" type="application/x-javascript;version=1.7" />
+  <script src="dialog.js" type="application/x-javascript;version=1.7" />
 
   <stringbundleset id="stringbundleset">
     <stringbundle id="ttine-strings" src="chrome://ttine/locale/ttine.properties"/>

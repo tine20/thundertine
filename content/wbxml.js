@@ -166,7 +166,42 @@ var wbxml = {
 	'Contacts2_CompanyMainPhone',
 	'Contacts2_AccountName',
 	'Contacts2_NickName',
-	'Contacts2_MMS'
+	'Contacts2_MMS',
+	// Calendar
+	'Calendar_Subject',
+	'Calendar_Location',
+	'Calendar_StartTime',
+	'Calendar_EndTime',
+	'Calendar_Timezone',
+	'Calendar_AllDayEvent',
+	'Calendar_DtStamp',
+	'Calendar_UID',
+	'Calendar_OrganizerEmail',
+	'Calendar_OrganizerName',
+	// --
+	'Calendar_BusyStatus',
+	'Calendar_Reminder',
+	'Calendar_MeetingStatus',
+	'Calendar_Sensitivity',
+	'Calendar_Recurrence',
+	'Calendar_Type',
+	'Calendar_Until',
+	'Calendar_Occurrences',
+	'Calendar_Interval',
+	'Calendar_DayOfWeek',
+	// --
+	'Calendar_DayOfMonth',
+	'Calendar_WeekOfMonth',
+	'Calendar_MonthOfYear',
+	'Calendar_Attendees',
+	'Calendar_Attendee',
+	'Calendar_Email',
+	'Calendar_Name',
+	'Calendar_Categories',
+	'Calendar_Category',
+	'Calendar_AttendeeStatus',
+	// --
+	'Calendar_AttendeeType'
   ), 
 
   tokens: Array(
@@ -189,7 +224,12 @@ var wbxml = {
 	0x07, 0x08, 0x09, 0x0A, 0x0C, 0x0E, 0x0F, 0x10, 0x11, 0x12,
 	0x13, 0x14, 0x15, 0x16, 0x17, 
 	// Contacts2
-	0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E
+	0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
+	// Calendar
+	0x26, 0x17, 0x27, 0x12, 0x05, 0x06, 0x11, 0x28, 0x19, 0x1a,
+	0x0D, 0x24, 0x18, 0x25, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 
+	0x21, 0x22, 0x23, 0x07, 0x08, 0x09, 0x0A, 0x0E, 0x0F, 0x29, 
+	0x2A
   ),
 
   wbxml_codepage: 0,
@@ -217,13 +257,16 @@ var wbxml = {
 	// strange elements from DOM-string converting destroy rest of tree -> pass out
 	if (this.tags.indexOf(dom.nodeName) < 0) 
 		return "";
-	var nwbxml = ''; 
+	var nwbxml = '';
+	var msg = '';
 	// page of current tag
-	var nodeArr = dom.nodeName.split('_'); 
-	if (typeof nodeArr[1] == 'undefined') 
-		var aPage = 0;
-	else
-		var aPage = this.codePages.indexOf(nodeArr[0]); 
+	var nodeArr = dom.nodeName.split('_');
+	var aPage = 0;
+	
+	if (typeof nodeArr[1] != 'undefined') 
+		aPage = this.codePages.indexOf(nodeArr[0]);
+	
+	msg += 'name: ' + (nodeArr[1] != undefined ? nodeArr[1] : 'undefined') + ', page: ' + aPage;
 	if(aPage != this.wbxml_codepage) { 
 		// change codePage
 		nwbxml = nwbxml + String.fromCharCode(0x00) + String.fromCharCode(aPage); 
@@ -231,6 +274,7 @@ var wbxml = {
 	}
 	// open tag
 	var token = this.tokens[this.tags.indexOf(dom.nodeName)]; 
+	msg += ', token: ' + token;
 
 	if(dom.childNodes.length > 0)
 		token = token + 0x40; 
@@ -244,10 +288,12 @@ var wbxml = {
 				nwbxml = nwbxml + this._node2wbxml(dom.childNodes[i]);
 		}	
 	}
-	// close tag (if children inside)
+	// close tag (if childNodes inside)
 	if (dom.childNodes.length > 0) {
 		nwbxml = nwbxml + String.fromCharCode(0x01); 
 	}
+	//if (nodeArr[0] == 'Calendar')
+	//	devTools.writeMsg('wbxml', '_node2wbxml', msg);
 	return nwbxml;
   },
 
@@ -257,7 +303,7 @@ var wbxml = {
 		return null;
 
 	var page = 0; var cmd = ''; 
-	var xml = '<?xml version="1.0" encoding="utf-8"?>'; var lastTags = new Array();
+	var xml = '<?xml version="1.0" encoding="utf-8"?>', lastTags = new Array(), inString = null;
 	for(var i=4; i<wbxml.length; i++) {
 		var c = wbxml.charCodeAt(i); 
 		// following bytes
@@ -271,7 +317,7 @@ var wbxml = {
 				if (c == 0x00) {
 					cmd = '';
 					/* 
-					   replace forbidden xml characters (strings are not to be escaped?) <--> ab.commandCard()
+					   replace forbidden xml characters (strings are not to be escaped?) <--> ttineAb.commandCard()
 					*/
 					inString = inString.replace(/</g, '&lt;');
 					inString = inString.replace(/>/g, '&gt;');
@@ -279,9 +325,9 @@ var wbxml = {
 					inString = inString.replace(/&/g, '&amp;');
 					// inString = inString.replace("/'/g", '&apos;');
 					xml = xml + inString;
-				}
-				else
+				} else
 					inString = inString + wbxml[i];
+				
 				continue;
 			}
 		}
@@ -293,33 +339,44 @@ var wbxml = {
 		}
 		else if (c==0x03) {
 			// string follows
-			var inString = '';
+			inString = '';
 			cmd = 'inString';
 			continue;
 		}
 		else if (c==0x01) {
 			// end tag
-			xml = xml + '</' + lastTags.pop()+ '>';
+			xml = xml + '</' + lastTags.pop() + '>';
 		}
-		else if (c>=0x05) { 
-			// remove type addition from tags
-			var inside = true;
-			if(c > 0xC0) c = c - 0xC0;
-			else if(c > 0x80) { c = c - 0x80; inside=false; }
-			else if(c > 0x40) c = c - 0x40;
-			else inside=false;
-			// find tag
-			var acp = this.codePages[page]; 
-			var acp_i = 0;
-			var tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
-			// scan all tokens until the one for the right codepage is found
-			if(page > 0) {
-				while (acp_i < this.tags.length && tag.substr(0, acp.length) != acp ) { 
-					tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
-					//if(tag.substr(0, acp.length) != acp) 
-					acp_i = this.tokens.indexOf(c, acp_i) + 1; 
+		else if (c>=0x05) {
+//			var msg = '';
+			var tag = null, inside = true;
+//			try {
+				// remove type addition from tags
+//				msg += 'c: 0x' + c.toString(16);
+				if(c > 0xC0) c = c - 0xC0;
+				else if(c > 0x80) { c = c - 0x80; inside=false; }
+				else if(c > 0x40) c = c - 0x40;
+				else inside=false;
+//				msg += ', inside: ' + inside + ', new c: 0x' + c.toString(16);
+				// find tag
+//				msg += ', page: ' + page;
+				var acp = this.codePages[page]; 
+//				msg += ', acp: ' + acp;
+				var acp_i = 0;
+				tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
+				// scan all tokens until the one for the right codepage is found
+				if(page > 0) {
+					while (acp_i < this.tags.length && tag.substr(0, acp.length) != acp ) { 
+						tag = this.tags[this.tokens.indexOf(c, acp_i)]; 
+						//if(tag.substr(0, acp.length) != acp) 
+						acp_i = this.tokens.indexOf(c, acp_i) + 1; 
+					} 
 				} 
-			} 
+//				if (acp == 'Calendar')
+//					devTools.writeMsg('wbxml', 'doXml', 'msg: ' + msg + ', tag: ' + tag);
+//			} catch(e) {
+//				devTools.writeMsg('wbxml', 'doXml', 'msg: ' + msg + ', tag: ' + tag);
+//			}
 			if (inside==true) {
 				lastTags.push(tag); 
 				xml = xml + '<' + tag + '>'; 
@@ -343,6 +400,8 @@ var wbxml = {
 	catch (err) {
 		helper.prompt("The server didn't response valid dom structure \n" + err);
 	}
+	
+	return true; // to avoid warnings
   }, 
 
   domStr: function(dom) {
@@ -396,15 +455,17 @@ var wbxml = {
   }, 
 
   httpRequest: function(xml, command) { 
+//	devTools.writeMsg('wbxml', 'httpRequest', 'command ' + command + '\nxml ' + xml);
 	// set default function values
 	if (typeof command == 'undefined')
 		command = 'Sync'; 
 
-	if (typeof xml == 'string')
-		var wbxml = this.doWbxml(xml);
-	else {
+	var wbxml = null;
+	if (typeof xml == 'string') {
+		wbxml = this.doWbxml(xml);
+	} else {
 		var serializer = new XMLSerializer();
-		var wbxml = this.doWbxml( serializer.serializeToString(xml) );
+		wbxml = this.doWbxml( serializer.serializeToString(xml) );
 	}
 
 	// request
@@ -414,25 +475,35 @@ var wbxml = {
 	req.overrideMimeType('application/vnd.ms-sync.wbxml'); 
 	req.setRequestHeader("User-Agent", config.deviceType+' ActiveSync');
 	req.setRequestHeader("Content-Type", 'application/vnd.ms-sync.wbxml');
-	req.setRequestHeader("Authorization", 'Basic '+btoa(config.user+':'+config.pwd));
-	req.setRequestHeader("MS-ASProtocolVersion", '2.5');
+	req.setRequestHeader("Authorization", 'Basic '+btoa(config.user+':'+config.getPwd()));
+	req.setRequestHeader("MS-ASProtocolVersion", '12.0');
 	req.setRequestHeader("Content-Length", wbxml.length);
 	req.onload = function () {
+//		devTools.writeMsg('wbxml', 'httpResponse', 'readyState: ' + req.readyState + ', status: ' + req.status + '\nresponse ' + req.responseText);
 		if (req.readyState == 4) {
+			var err = undefined; 
+
 			if (req.status == 200) {
 				if(req.getResponseHeader('X-API')!='http://www.tine20.org/apidocs/tine20/') 
 					helper.prompt(ttine.strings.getString('notTine'));
-				sync.dispatch(req);
+			} else {
+				err = {};
+				err.reason = 'http';
+				err.status = req.status;
+				err.statusText = req.statusText;
 			}
-			else 
-				sync.failed('http', req);
+
+			sync.dispatch(req, err);
 		} 
-	}
+	};
 	req.upload.onerror = function (e) {
-		helper.prompt("Error " + e.target.status + " occurred while uploading.");
-	}
+		var err = {};
+		err.reason = 'upload';
+		err.status = -1;
+		err.statusText = (e.target != undefined && e.target.status != undefined ? e.target.status : 'no status for upload error available!');
+		sync.dispatch(req, err);
+	};
 	req.sendAsBinary(wbxml);
   }, 
 
-}
-
+};

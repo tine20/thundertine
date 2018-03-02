@@ -1,64 +1,71 @@
 /*
+ * 
+ * Copyright (C) 2010 by Santa Noel
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; version 2
+ * of the License ONLY.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * 
+ */
 
-Copyright (C) 2010 by Santa Noel
+var ttineAb = {
+	category: 'contacts',
+  mapActiveSyncToThunderbird: {
+  // mapping table for ActiveSync(property) -> Thunderbird(value)
+  // ActiveSync						 Thunderbird		// additional ActiveSync settings
+	"Contacts_FileAs": 				"DisplayName",
+	"Contacts_FirstName": 			"FirstName",
+	"Contacts_LastName": 			"LastName",
+	"Contacts_MiddleName": 			"NickName",
+	"Contacts_Email1Address": 		"PrimaryEmail",
+	"Contacts_Email2Address": 		"SecondEmail",
+	"Contacts_HomeStreet": 			"HomeAddress",
+	"Contacts_HomeCity": 			"HomeCity",
+	"Contacts_HomeState": 			"HomeState",
+	"Contacts_HomePostalCode": 		"HomeZipCode",
+	"Contacts_HomeCountry": 		"HomeCountry",
+	"Contacts_BusinessStreet": 		"WorkAddress",
+	"Contacts_BusinessCity": 		"WorkCity",
+	"Contacts_BusinessState": 		"WorkState",
+	"Contacts_BusinessPostalCode": 	"WorkZipCode",
+	"Contacts_BusinessCountry": 	"WorkCountry",
+	"Contacts_CompanyName": 		"Company",
+	"Contacts_Department": 			"Department",
+	"Contacts_JobTitle": 			"JobTitle",
+	"Contacts_OfficeLocation": 		"Custom1",
+	"Contacts_HomePhoneNumber": 	"HomePhone",
+	"Contacts_BusinessPhoneNumber": "WorkPhone", 
+	"Contacts_BusinessFaxNumber": 	"FaxNumber",
+	"Contacts_HomeFaxNumber": 		"PagerNumber",
+	"Contacts_MobilePhoneNumber": 	"CellularNumber",
+	"Contacts_Birthday": 			"%Birthday",
+	"Contacts_Webpage": 			"WebPage1",
+	"Contacts_Suffix": 				"Custom2",
+	"Contacts_Picture": 			"%Picture", 		// ghosted="true" applied in supportedDom()
+	"Contacts_Categories": 			"%Categories"
+  },
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; version 2
-of the License ONLY.
+  supportedDom: function() {
+	var doc = document.implementation.createDocument("", "", null);
+	var data = doc.createElement('Supported');
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+	for (var property in this.mapActiveSyncToThunderbird) {
+		data.appendChild(doc.createElement(property));
+		if (property == 'Contacts_Picture')
+			data.lastChild.setAttribute('ghosted', 'true');
+	}
 
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
-*/
-
-var ab = {
-  
-  // mapping table for ActiveSync (nodeName) -> Thunderbird (nodeValue)
-  map: '<?xml version="1.0" encoding="utf-8"?>\
-<card>\
-	<Contacts_FileAs>DisplayName</Contacts_FileAs>\
-	<Contacts_FirstName>FirstName</Contacts_FirstName>\
-	<Contacts_LastName>LastName</Contacts_LastName>\
-	<Contacts_MiddleName>NickName</Contacts_MiddleName>\
-	<Contacts_Email1Address>PrimaryEmail</Contacts_Email1Address>\
-	<Contacts_Email2Address>SecondEmail</Contacts_Email2Address>\
-	<Contacts_HomeStreet>HomeAddress</Contacts_HomeStreet>\
-	<Contacts_HomeCity>HomeCity</Contacts_HomeCity>\
-	<Contacts_HomeState>HomeState</Contacts_HomeState>\
-	<Contacts_HomePostalCode>HomeZipCode</Contacts_HomePostalCode>\
-	<Contacts_HomeCountry>HomeCountry</Contacts_HomeCountry>\
-	<Contacts_BusinessStreet>WorkAddress</Contacts_BusinessStreet>\
-	<Contacts_BusinessCity>WorkCity</Contacts_BusinessCity>\
-	<Contacts_BusinessState>WorkState</Contacts_BusinessState>\
-	<Contacts_BusinessPostalCode>WorkZipCode</Contacts_BusinessPostalCode>\
-	<Contacts_BusinessCountry>WorkCountry</Contacts_BusinessCountry>\
-	<Contacts_CompanyName>Company</Contacts_CompanyName>\
-	<Contacts_Department>Department</Contacts_Department>\
-	<Contacts_JobTitle>JobTitle</Contacts_JobTitle>\
-	<Contacts_OfficeLocation>Custom1</Contacts_OfficeLocation>\
-	<Contacts_HomePhoneNumber>HomePhone</Contacts_HomePhoneNumber>\
-	<Contacts_BusinessPhoneNumber>WorkPhone</Contacts_BusinessPhoneNumber>\
-	<Contacts_BusinessFaxNumber>FaxNumber</Contacts_BusinessFaxNumber>\
-	<Contacts_HomeFaxNumber>PagerNumber</Contacts_HomeFaxNumber>\
-	<Contacts_MobilePhoneNumber>CellularNumber</Contacts_MobilePhoneNumber>\
-	<Contacts_Birthday>%Birthday</Contacts_Birthday>\
-	<Contacts_Webpage>WebPage1</Contacts_Webpage>\
-	<Contacts_Suffix>Custom2</Contacts_Suffix>\
-	<Contacts_Picture ghosted="true">%Picture</Contacts_Picture>\
-	<Contacts_Categories>%Categories</Contacts_Categories>\
-</card>',
-
-  mapDom: function() { 
-	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-		.createInstance(Components.interfaces.nsIDOMParser); 
-	return parser.parseFromString(this.map, "text/xml"); 
+	return data;
   },
 
   getSpecialAbValue: function(card, field) {
@@ -69,16 +76,13 @@ var ab = {
 	// Anniversary isn't supported by Tine 2.0
 	// Birthday
 	if (field=='Birthday') {
-		if (card.getProperty("BirthYear", "0") >0 && card.getProperty("BirthMonth", "0") >0 && card.getProperty("BirthDay", "0") >0) {
+		if (card.getProperty("BirthYear", "0") >0 && card.getProperty("BirthMonth", "0") >0 && card.getProperty("BirthDay", "0") > 0) {
 			var aHours = 0;
-			// Tine 2.0 manipulates dates from iPhones (subtract 12 hours)
-			if (config.deviceType == 'iPhone')
-				aHours = 12;
 			var dLoc = new Date(
 				card.getProperty("BirthYear", "0000"),
 				(card.getProperty("BirthMonth", "01") -1), // Month in js is from 0 to 11
 				card.getProperty("BirthDay", "00"),
-				aHours,00,00,000
+				aHours,0,0,0 //,00,00,000 // to avoid warnings
 			);
 			var tzOff = dLoc.getTimezoneOffset() * 60000;
 			//
@@ -87,7 +91,7 @@ var ab = {
 			//
 			if ((navigator.platform.substr(0,3)=='Win') && (dLoc.getFullYear()<=1970)) {
 				// Calculating with 1st february makes sure the year will be 1970 in normal time any case
-				var dTmp = new Date(1970, 01, 01, 00, 00, 00, 000); 
+				var dTmp = new Date(1970, 1, 1, 0, 0, 0, 0); //01, 01, 00, 00, 00, 000); // to avoid warnings 
 				tzOff = dTmp.getTimezoneOffset() * 60000;
 			}
 			var dAs = new Date(dLoc.getTime() + tzOff);
@@ -97,13 +101,10 @@ var ab = {
 			var rDay = (dAs.getDate()>9) ? dAs.getDate() : '0'+dAs.getDate();
 			var rHour = (dAs.getHours()>9) ? dAs.getHours() : '0'+dAs.getHours();
 			var rMinute = (dAs.getMinutes()>9) ? dAs.getMinutes() : '0'+dAs.getMinutes();
-			var ret = rYear+'-'+rMonth+'-'+rDay+'T'+rHour+':'+rMinute+':00.000Z';
+			ret = rYear+'-'+rMonth+'-'+rDay+'T'+rHour+':'+rMinute+':00.000Z';
 		}
-		else
-			var ret = ''; 
-	}
 	// Picture
-	else if (field=='Picture') {
+	} else if (field=='Picture') {
 		var photo = card.getProperty("PhotoName", ""); 
 		if (card.getProperty("PhotoType", "") == 'file' && 
 			(photo.substr(photo.length-4, 4) == '.jpg' || photo.substr(photo.length-5, 5) == '.jpeg') ) {
@@ -116,7 +117,7 @@ var ab = {
 			if( file.exists() && !file.isDirectory() ) {
 				var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"]
 					.createInstance(Components.interfaces.nsIFileInputStream); 
-				fstream.init(file, 0x01, 0444, 0);
+				fstream.init(file, 0x01, parseInt('0444', 8), 0);
 				var stream = Components.classes["@mozilla.org/binaryinputstream;1"]
 					.createInstance(Components.interfaces.nsIBinaryInputStream);
 				stream.setInputStream(fstream);
@@ -124,13 +125,11 @@ var ab = {
 				// Specifikation limits size to 48KB
 				if (base64.length < 49152 || config.contactsLimitPictureSize == false)
 					ret = base64;
-				else
-					ret = '';
 			}
-		}
-		else
+		} else
 			ret = null;
 	}
+
 	return ret;
   },
 
@@ -153,17 +152,15 @@ var ab = {
 			card.deleteProperty("BirthMonth");
 			card.deleteProperty("BirthDay"); 
 		}
-	}
-	else if (tbField=='Categories') {
+	} else if (tbField=='Categories') {
 		var Customfield = '';
-		for (var i=0; i<asValue.children.length; i++) {
-			Customfield = Customfield + asValue.children[i].firstChild.nodeValue;
-			if (i<(asValue.children.length-1))
+		for (var i=0; i<asValue.childNodes.length; i++) {
+			Customfield = Customfield + asValue.childNodes[i].firstChild.nodeValue;
+			if (i<(asValue.childNodes.length-1))
 				Customfield = Customfield + ", ";
 		}
 		card.setProperty("Custom4", Customfield );
-	}
-	else if (tbField=='Picture') { 
+	} else if (tbField=='Picture') { 
 		// delete image
 		if (asValue == '') {
 			var file = Components.classes["@mozilla.org/file/directory_service;1"]
@@ -179,9 +176,8 @@ var ab = {
 			card.deleteProperty("PhotoName");
 			card.deleteProperty("PhotoType");
 			card.deleteProperty("PhotoURI");
-		}
 		// modify or new
-		else {
+		} else {
 			var photo = card.getProperty("PhotoName", ""); 
 			if (photo == '') {
 				photo = this.uniqueId() + '.jpg';
@@ -194,7 +190,7 @@ var ab = {
 						         .get("ProfD", Components.interfaces.nsIFile);
 			file.append(config.picDir);
 			file.append(photo); 
-			foStream.init(file, 0x02 | 0x08 | 0x20, 0600, 0);   // write, create, truncate
+			foStream.init(file, 0x02 | 0x08 | 0x20, parseInt('0600', 8), 0);   // write, create, truncate
 				var binary = atob(asValue);
 				foStream.write(binary, binary.length);
 			foStream.close();
@@ -202,127 +198,152 @@ var ab = {
 			var filePath = 'file:///' + file.path.replace(/\\/g, '\/').replace(/^\s*\/?/, '').replace(/\ /g, '%20');
 			card.setProperty("PhotoURI", filePath );
 		}
-	}
+    }
   },
 
-  commandsDom: function() { 
+  commandsDom: function(uri) {
+	var addressBook = config.getAbByUri(uri);
+	var result = null;
 
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
-	
 	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder);
-		if (addressBook.fileName && !addressBook.isRemote && !addressBook.isMailList) { 
-			var cardArr = new Array();
-			let cards = addressBook.childCards;
-			// go for new and changed cards
-			while (cards.hasMoreElements()) { 
+		var cardArr = new Array();
+		let cards = addressBook.childCards;
+		// go for new and changed cards
+		while (cards.hasMoreElements()) {
+			try {
 				let card = cards.getNext();
-				if (card instanceof Components.interfaces.nsIAbCard) { 
-					var doc = document.implementation.createDocument("", "", null);
+
+				if (card instanceof Components.interfaces.nsIAbCard) {
 					var tineId = card.getProperty("TineSyncId", "");
+					var clientId = null;
+
 					// unsynced (or left out) cards
-					if (tineId == "" || tineId.substr(0,7) == 'client-' ) {
-						var clientId = 'client-'+this.uniqueId();
-						var cardDom = this.asDom(card, clientId); 
-					}
-					else
-						var cardDom = this.asDom(card); 
+					if (tineId == "" || tineId.substr(0,7) == 'client-' )
+						clientId = 'client-' + this.uniqueId();
+
+					var cardDom = this.asDom(card, clientId); 
+
 					if (cardDom != null) {
 						// unsyncted cards need a preliminary id
-						if (tineId == "" || tineId.substr(0,7) == 'client-' ) {
+						if (clientId != null) {
 							card.setProperty("TineSyncId", clientId);
 							addressBook.modifyCard(card);
-						}
-						cardArr.push( doc.appendChild(cardDom) );
-					} 
+						} else if (cardDom.nodeName == 'Change')
+							addressBook.modifyCard(card);
+
+						cardArr.push(cardDom);
+					}
 				}
+			} catch(newEx) {
+				alert("commandsDom: new cards exception" + newEx);
 			}
-			// add cards which doesn't exist anymore
-			for (var i=0; i < config.managedCards.length; i++) {
-				let card = addressBook.getCardFromProperty("TineSyncId", config.managedCards[i], false); 
+		}
+
+		// add cards which doesn't exist anymore
+		var abSyncConfig = config.getSyncConfigByCategoryUri(this.category, uri);
+		var cnt = abSyncConfig.managedCards.length;
+		for (var i=0; i<cnt; i++) {
+			try {
+				var tineSyncId = abSyncConfig.managedCards[i];
+				let card = addressBook.getCardFromProperty("TineSyncId", tineSyncId, false); 
 				if(card == null) {
 					var doc = document.implementation.createDocument("", "", null);
-					var cardDom = this.asDelDom(config.managedCards[i]);
-					cardArr.push( doc.appendChild(cardDom) );
+					cardArr.push(doc.appendChild(this.asDelDom(tineSyncId)));
 				}
+			} catch(addEx) {
+				alert("commandsDom: add cards exception" + addEx);
 			}
-			
-
-			if (cardArr.length > 0)
-				return cardArr;
-			else
-				return null;
 		}
-	}
-	catch (err) {
-		helper.prompt("Cannot access addressbook. Please edit ThunderTine options\n" + err);
-	}
-	return null;
-  },
 
-  supportedDom: function() {
-	var doc = document.implementation.createDocument("", "", null);
-	var data = doc.createElement('Supported');
-	var mapDom = this.mapDom();
-	for (var i=0; i<mapDom.firstChild.children.length; i++) {
-		data.appendChild( doc.createElement(mapDom.firstChild.children[i].nodeName) );
-	} 
-	return data;
+		if (cardArr.length > 0)
+			result = cardArr;
+	} catch (err) {
+		helper.prompt("commandsDom: Cannot access addressbook . Please edit ThunderTine options\n" + err);
+	}
+
+    return result;
   },
 
   asDom: function(card, clientId) {
 	var doc = document.implementation.createDocument("", "", null);
 	// read card data
-	var md5text = '';
-	var mapDom = this.mapDom();
-	var data = doc.createElement('ApplicationData');
-	for (var i=0; i<mapDom.firstChild.children.length; i++) {
-		var asField = mapDom.firstChild.children[i].nodeName;
-		var tbField = mapDom.firstChild.children[i].firstChild.nodeValue;
-		if(tbField.substr(0,1) != '%') 
-			var tbValue = card.getProperty(tbField, "");
-		else {
-			var tbValue = this.getSpecialAbValue(card, tbField);
+
+	var md5 = this.md5hashForCard(card);
+	var command = null;
+
+	if (card.getProperty("TineSyncMD5", "") != md5 || clientId != null) {
+		var data = doc.createElement('ApplicationData');
+		for (var property in this.mapActiveSyncToThunderbird) {
+			var asField = property;
+			var tbField = this.mapActiveSyncToThunderbird[property];
+			var tbValue = null;
+			if(tbField.substr(0,1) != '%') 
+				tbValue = card.getProperty(tbField, "");
+			else
+				tbValue = this.getSpecialAbValue(card, tbField);
+	
+			if (tbValue == null)
+				data.appendChild(doc.createElement(asField));
+			else if (tbValue != '') {
+				var field = doc.createElement(asField);
+				field.appendChild(doc.createTextNode(tbValue));
+				data.appendChild(field);
+			}
+		} 
+		// calculate meta data and build command
+		if (clientId != null) {
+			command = doc.createElement('Add');
+			command.appendChild(doc.createElement('ClientId'));
+			command.lastChild.appendChild(doc.createTextNode(clientId)); 
+		} else if (card.getProperty("TineSyncMD5", "") != md5) {
+			devTools.writeMsg('ttineAb', 'asDom', md5 + ' != ' + card.getProperty("TineSyncMD5", ""));
+			command = doc.createElement('Change');
+			command.appendChild(doc.createElement('ServerId'));
+			command.lastChild.appendChild(doc.createTextNode(card.getProperty("TineSyncId", "")));
+			// change doesn't get a repsonse from server (so set md5 here)
+			card.setProperty('TineSyncMD5', md5);
 		}
-		if (tbValue == null)
-			data.appendChild( doc.createElement(asField) );
-		else if (tbValue != '') {
-			var field = doc.createElement(asField);
-			field.appendChild( doc.createTextNode(tbValue) );
-			data.appendChild( field );
-			md5text = md5text + tbValue;
-		}
+
+		if (command != null)
+			command.appendChild(data);
+	} else {
+		//command = doc.createElement('ServerId');
+		//command.appendChild(doc.createTextNode(card.getProperty("TineSyncId", ""))); 
 	} 
-	// calculate meta data and build command
-	var md5 = this.md5hash(md5text);
-	var tineId = card.getProperty("TineSyncId", "");
-	if (tineId == "" || tineId.substr(0,7) == 'client-' ) {
-		var command = doc.createElement('Add');
-		command.appendChild( doc.createElement('ClientId') );
-		command.lastChild.appendChild( doc.createTextNode(clientId) ); 
-	}
-	else if (card.getProperty("TineSyncMD5", "") != md5) {
-		var command = doc.createElement('Change');
-		command.appendChild( doc.createElement('ServerId') );
-		command.lastChild.appendChild( doc.createTextNode( card.getProperty("TineSyncId", "") ) );
-	}
-	// build command container
-	if (typeof command == 'undefined')
-		return null;
-	else {
-		command.appendChild(data);
-		return command;
-	}
+
+    return command;
   },
 
   asDelDom: function(id) {
 	var doc = document.implementation.createDocument("", "", null);
 	var command = doc.createElement('Delete');
-	command.appendChild( doc.createElement('ServerId') );
-	command.lastChild.appendChild( doc.createTextNode(id) );
+	command.appendChild(doc.createElement('ServerId'));
+	command.lastChild.appendChild(doc.createTextNode(id));
 	return command;
   }, 
+
+  md5hashForCard: function(card) {
+	var result = '';
+	var md5text = '';
+
+	for (var property in this.mapActiveSyncToThunderbird) {
+		var tbField = this.mapActiveSyncToThunderbird[property];
+		var tbValue = null;
+		if(tbField.substr(0,1) != '%') 
+			tbValue = card.getProperty(tbField, '');
+		else
+			tbValue = this.getSpecialAbValue(card, tbField);
+
+		if (tbValue != '' && tbValue != null) {
+			md5text += tbValue;
+		}
+	} 
+
+	result = this.md5hash(md5text);
+
+	//devTools.writeMsg('ttineAb', 'md5hashForCard', card.getProperty('TineSyncId', '') + ', in: \'' + md5text + '\', out: ' + result);
+	return result;
+  },
 
   md5hash: function(md5input) {
 	var md5 = Components.classes["@mozilla.org/security/hash;1"]
@@ -348,205 +369,217 @@ var ab = {
 	return this.md5hash(endTime);
   }, 
 
-  listAbs: function() {
-	var resArr = Array();
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
-	
-	// find book
-	let allAddressBooks = abManager.directories; 
-	while (allAddressBooks.hasMoreElements()) { 
-		let addressBook = allAddressBooks.getNext();
-		// found right book -> read cards
-		if (addressBook instanceof Components.interfaces.nsIAbDirectory && !addressBook.isRemote && addressBook.fileName != 'history.mab') 
-			resArr.push(addressBook.URI);
-	}
+  removeCard: function(uri, tineSyncId) {
+	var addressBook = config.getAbByUri(uri);
 
-	return resArr;
-  }, 
-
-  responseCard: function(tineSyncId, fields, values) { 
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
 	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder); 
-		if (addressBook.fileName && !addressBook.isRemote && !addressBook.isMailList) { 
-			let card = addressBook.getCardFromProperty("TineSyncId", tineSyncId, false); 
-			if(card == null)
-				throw "Unknown addressbook entry, with internal id "+tineSyncId; 
-			// change requested fields
-			for (var f = 0; f < fields.length; f++) { 
-				var field = fields[f]; 
-				var value = values[f];
-				// if card is changed calculate new md5
-				if (field == 'TineSyncMD5') {
-					// read card data
-					var md5text = '';
-					var mapDom = this.mapDom();
-					for (var i=0; i<mapDom.firstChild.children.length; i++) {
-						var tbField = mapDom.firstChild.children[i].firstChild.nodeValue;
-						if(tbField.substr(0,1) != '%') 
-							var tbValue = card.getProperty(tbField, "");
-						else 
-							var tbValue = this.getSpecialAbValue(card, tbField);
-						if (tbValue != '' && tbValue != null) 
-							md5text = md5text + tbValue; 
-					} 
-					value = this.md5hash(md5text); 
-				} 
-				card.setProperty(field, value); 
-			}
-			// save changes
-			addressBook.modifyCard(card); 
-		}
-	}
-	catch (err) {
-		helper.prompt("Couldn't update Addressbook entry. Please check your books.\n\n"+err);
+		let card = addressBook.getCardFromProperty("TineSyncId", tineSyncId, false); 
+
+		if(card == null)
+			throw "Unknown addressbook entry, with internal id "+tineSyncId;
+
+		devTools.writeMsg("ab", "removeCard", "syncID: " + tineSyncId + ", name: " + card.getProperty("LastName", "<emtpy>") + ", firstname: " + card.getProperty("FirstName", "<emtpy>"));
+		// delete card
+		let cardsToDelete = Components.classes["@mozilla.org/array;1"]
+        	.createInstance(Components.interfaces.nsIMutableArray);
+		cardsToDelete.appendElement(card, false);
+
+		addressBook.deleteCards(cardsToDelete); 
+	} catch (err) {
+		helper.prompt("removeCard: Couldn't delete Addressbook entry. Please check your books.\n\n"+err);
 	}
   }, 
 
-  commandCard: function(command, id, appDataDom) { 
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
+  responseCard: function(uri, tineSyncId, fields, values) {
+	var addressBook = config.getAbByUri(uri);
 
 	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder); 
-		if (addressBook.fileName && !addressBook.isRemote && !addressBook.isMailList) { 
-			if(command == 'Add' || command == 'Change') {
-				let card = null; 
-				// If cards are resent (syncKey = 0) don't change existing (managed) cards
-				if(command == 'Change' || config.managedCards.indexOf(id) >= 0 ) 
-					card = addressBook.getCardFromProperty("TineSyncId", id, false); 
-				else { // new card
-					card = Components.classes["@mozilla.org/addressbook/cardproperty;1"]  
-						.createInstance(Components.interfaces.nsIAbCard);  
-					card.setProperty("TineSyncId", id);
-				}
-				if (card == null) 
-					throw command+" of card failed.";
-				// apply server data
+		let card = addressBook.getCardFromProperty("TineSyncId", tineSyncId, false); 
+		if(card == null)
+			throw "Unknown addressbook entry, with internal id "+tineSyncId;
+
+		devTools.writeMsg("ab", "responseCard", "syncID: " + tineSyncId + ", name: " + card.getProperty("LastName", "<emtpy>") + ", firstname: " + card.getProperty("FirstName", "<emtpy>"));
+		// change requested fields
+		for (var f = 0; f < fields.length; f++) { 
+			var field = fields[f]; 
+			var value = values[f];
+			// if card is changed calculate new md5
+			if (field == 'TineSyncMD5') {
+				// read card data
 				var md5text = '';
-				var mapDom = this.mapDom(); 
-				for (var i=0; i<appDataDom.children.length; i++) {
-					var asField = appDataDom.children[i].nodeName;
-					if (asField == 'Contacts_Picture')
-						// stupid Mozilla 4kb bug -> Need extra function to retrieve nodeValue!!
-						var asValue = this._largeDomValue(appDataDom.children[i]); 
-					else if (asField == 'Contacts_Categories')
-						var asValue = appDataDom.children[i];
-					else
-						var asValue = appDataDom.children[i].firstChild.nodeValue; 
-					var tbFieldX = helper.doEvaluateXPath(mapDom, "//"+asField);
-					if (tbFieldX.length > 0) {
-						var tbField = tbFieldX[0].firstChild.nodeValue;
-						if(tbField.substr(0,1) == '%') 
-							this.setSpecialAbValue(card, tbField.substr(1,tbField.length-1), asValue);
-						else {
-							// replace XML-escaped characters: <, > and & <--> wbxml.doXml()
-							asValue = asValue.replace(/&lt;/g, '<');
-							asValue = asValue.replace(/&gt;/g, '>');
-							asValue = asValue.replace(/&amp;/g, '&');
-							card.setProperty(tbField, asValue);
-						}
-						md5text = md5text + asValue; 
-					}
-					else {
-						helper.prompt("The Server tries to change "+asField+", which isn't known to Thunderbird!");
-						// ActiveSync field is unknown to Thunderbird. Save it hidden? Maybe later. Otherwise next sync will overwrite if empty.
-					}
-				}
-				// give md5hash (otherwise it will be sent to the server again)
-				card.setProperty('TineSyncMD5', this.md5hash(md5text));
-				// save changes. If cards are resent (syncKey = 0) don't change existing (managed) cards
-				if (command == 'Change' || config.managedCards.indexOf(id) >= 0 )
-					addressBook.modifyCard(card); 
-				else if (command == 'Add')
-					addressBook.addCard(card);
+				for (var property in this.mapActiveSyncToThunderbird) {
+					var tbField = this.mapActiveSyncToThunderbird[property];
+					var tbValue = null;
+					if(tbField.substr(0,1) != '%') 
+						tbValue = card.getProperty(tbField, "");
+					else 
+						tbValue = this.getSpecialAbValue(card, tbField);
+
+					if (tbValue != '' && tbValue != null) 
+						md5text = md5text + tbValue;
+				} 
+				value = this.md5hash(md5text); 
+			} 
+			card.setProperty(field, value); 
+		}
+		// save changes
+		addressBook.modifyCard(card); 
+	} catch (err) {
+		helper.prompt("responseCard: Couldn't update Addressbook entry. Please check your books.\n\n"+err);
+	}
+  }, 
+
+  commandCard: function(uri, command, id, appDataDom) { 
+	var addressBook = config.getAbByUri(uri);
+	var changed = [];
+
+	try {
+		if(command == 'Add' || command == 'Change') {
+			var abSyncConfig = config.getSyncConfigByCategoryUri(this.category, uri);
+			var card = null; 
+			// If cards are resent (syncKey = 0) don't change existing (managed) cards
+			if(command == 'Change' || abSyncConfig.managedCards.indexOf(id) >= 0 ) { 
+				card = addressBook.getCardFromProperty("TineSyncId", id, false); 
+			} else { // new card
+				card = Components.classes["@mozilla.org/addressbook/cardproperty;1"]  
+					.createInstance(Components.interfaces.nsIAbCard);  
+				card.setProperty("TineSyncId", id);
 			}
-			else if(command == 'Delete') {
-				let card = addressBook.getCardFromProperty("TineSyncId", id, false); 
-				if (card!=null) {
-					// remove picture (if it is in Tb cache only)
-					this.setSpecialAbValue(card, "Picture", "");
-					// remove card
-					let cardsToDelete = Components.classes["@mozilla.org/array;1"]  
-						.createInstance(Components.interfaces.nsIMutableArray);  
-					cardsToDelete.appendElement(card, false);  
-					addressBook.deleteCards(cardsToDelete);  
+			if (card == null) 
+				throw command+" of card failed.";
+
+			// apply server data
+			var cnt = appDataDom.childNodes.length;
+
+			for (var i=0; i<cnt; i++) {
+				var childNode = appDataDom.childNodes[i];
+				var asField = childNode.nodeName;
+				var asValue = null;
+				if (asField == 'Contacts_Picture') {
+					// stupid Mozilla 4kb bug -> Need extra function to retrieve nodeValue!!
+					asValue = this._largeDomValue(childNode); 
+				} else if (asField == 'Contacts_Categories') {
+					asValue = childNode;
+				} else
+					asValue = childNode.firstChild.nodeValue;
+
+				var tbField = this.mapActiveSyncToThunderbird[asField];
+
+				// ignore unmapped fields
+				if (tbField == undefined)
+					continue;
+
+				if(tbField.substr(0,1) == '%') 
+					this.setSpecialAbValue(card, tbField.substr(1, tbField.length-1), asValue);
+				else {
+					asValue = helper.unescapeNodeValue(asValue);
+					card.setProperty(tbField, asValue);
 				}
+				changed.push(tbField);
+			}
+			this.cleanCard(card, changed);
+
+			// give md5hash (otherwise it will be sent to the server again)
+			card.setProperty('TineSyncMD5', this.md5hashForCard(card));
+			// save changes. If cards are resent (syncKey = 0) don't change existing (managed) cards
+			if (command == 'Change' || abSyncConfig.managedCards.indexOf(id) >= 0 )
+				addressBook.modifyCard(card); 
+			else if (command == 'Add')
+				addressBook.addCard(card);
+		}
+
+		if(command == 'Delete')
+			this.removeCard(uri, id);
+	} catch (err) {
+		helper.prompt("commandCard: Server sent new cards but they couldn't be applied to the local Addressbook. \n\n"+err);
+	}
+  },
+
+  cleanCard: function(card, changed) {
+	// clean up
+	try {
+		for (var property in this.mapActiveSyncToThunderbird) {
+			var tbField = this.mapActiveSyncToThunderbird[property];
+	
+			if (tbField == '' || changed.indexOf(tbField) >= 0)
+				continue;
+			
+			switch (tbField) {
+				case '%Birthday':
+				case '%Picture':
+					if (this.getSpecialAbValue(card, tbField) != '')
+						this.setSpecialAbValue(card, tbField, '');
+					break;
+				case '%Categorie':
+					this.setSpecialAbValue(card, tbField, []);
+					break;
+				default:
+					if (card.getProperty(tbField, '') != '')
+						card.deleteProperty(tbField);
+					break;
 			}
 		}
-	}
-	catch (err) {
-		helper.prompt("Server sent new cards but they couldn't be applied to the local Addressbook. \n\n"+err);
+	} catch(e) {
+		devTools.writeMsg('ttineAb', 'cleanCard', 'error: ' + e);
 	}
   },
 
   // this function handles a mozilla bug. Every nodeValue is truncated to maximum of 4096 chars (bytes)!! Hate it.
   _largeDomValue: function(node) {
+	var content = null;
+
 	if(node.firstChild.textContent && node.normalize) {
 		node.normalize(node.firstChild);
 		content=node.firstChild.textContent;
 	}
 	else if(node.firstChild.nodeValue) 
 		content=node.firstChild.nodeValue;
-	else 
-		content=null;
+
 	return content;
   },
 
-  managedCards: function() {
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
+  managedCards: function(uri) {
+	var addressBook = config.getAbByUri(uri);
 
-	let addressBook = abManager.getDirectory(config.contactsLocalFolder);
 	let cards = addressBook.childCards;
-	config.managedCards = Array();
+	var abSyncConfig = config.getSyncConfigByCategoryUri(this.category, uri);
+	abSyncConfig.managedCards = Array();
 	while (cards.hasMoreElements()) { 
 		let card = cards.getNext();
 		if (card instanceof Components.interfaces.nsIAbCard) {
 			var tineId = card.getProperty("TineSyncId", ""); 
 			if(tineId != '' && tineId.substr(0,7) != 'client-')
-				config.managedCards.push(tineId);
+				abSyncConfig.managedCards.push(tineId);
 		}
-	} 
+	}
   },
 
-  doClearExtraFields: function(uri) { 
-
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
-	
-	let addressBook = abManager.getDirectory(uri); 
+  doClearExtraFields: function(uri, deleteData) { 
+	var addressBook = config.getAbByUri(uri);
 	let cards = addressBook.childCards;
+	var cleanData = (typeof deleteData == 'boolean' && deleteData == true ? true : false);
+
 	while (cards.hasMoreElements()) { 
 		let card = cards.getNext();
 		if (card instanceof Components.interfaces.nsIAbCard) {
 			// do not manage this card anymore
-			var id = card.getProperty("TineSyncMD5", null);
-			if (id != null && config.managedCards.indexOf(id) >= 0)
-				config.managedCards.splice(id, 1);
-			// Anyhow deleting properties doesn't work. Null them instead.
-			card.setProperty("TineSyncMD5", null);
-			card.setProperty("TineSyncId", null); 
-			addressBook.modifyCard(card); 
-			card.deleteProperty("TineSyncMD5");
-			card.deleteProperty("TineSyncId");
+			if (cleanData == false) {
+				// Anyhow deleting properties doesn't work. Null them instead.
+				card.setProperty("TineSyncMD5", null);
+				card.setProperty("TineSyncId", null); 
+				addressBook.modifyCard(card); 
+				card.deleteProperty("TineSyncMD5");
+				card.deleteProperty("TineSyncId");
+			} else {
+				// delete card
+				let cardsToDelete = Components.classes["@mozilla.org/array;1"]
+		        	.createInstance(Components.interfaces.nsIMutableArray);
+				cardsToDelete.appendElement(card, false);
+
+				addressBook.deleteCards(cardsToDelete); 
+			}
 		}
-	}
-  }, 
-
-  stillExists: function() { 
-
-	let abManager = Components.classes["@mozilla.org/abmanager;1"]
-		.getService(Components.interfaces.nsIAbManager);
-	try {
-		let addressBook = abManager.getDirectory(config.contactsLocalFolder);
-		return true;
-	}
-	catch (err) {
-		return false;
 	}
   }
 
-}
+};

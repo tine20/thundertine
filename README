@@ -21,11 +21,11 @@ later versions try to cover these questions, too.
 
 FEATURES
 
-By now ThunderTine syncs one address book with Tine 2.0, either with a virtual
-contacts folder inside tine (which is made for dumb device) or with a selected
-folder (if you tell ThunderTine to pretend to be a iPhone). 
+By now ThunderTine syncs address books with Tine 2.0 contacts folder inside tine.
+Calendar synchronisation supports the following features: 
+title, location, date/time, description, attendees, alarm (limited to 1; only before start yet), recurrence (excl. more than one day per month/year). 
 
-There's no calender and tasks synchronisation by the time of writing.
+There's no tasks synchronisation by the time of writing.
 
 INSTALL
 
@@ -59,3 +59,12 @@ HISTORY
 
 0.1     Initial  Version: Sync contacts between Thunderbird and Tine 2.0
 0.2     Problems with ampersand ("&") solved
+0.3a	protocol version 12.0 (Kristina - 2013.03)
+	support for thunderbird 17.0.4 (various javascript bugfixes)
+	delayed access to password manager (on first httpRequest; increases usability if masterpassword is used)
+	support for syncing multiple contact folders added (several modifications under the hood; simplified sync code)
+0.3b	sync contacts complete (minor runtime errors fixed)
+	full support for folder operations (FolderDelete seems to be brocken in tine20)
+0.4a	experimental calendar support (set preference extensions.ttine.enableExperimentalCode=true)
+	sync contacts (md5 calculation fixed)
+0.4b	calendar support complete

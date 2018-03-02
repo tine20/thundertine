@@ -7,6 +7,8 @@
 <!ENTITY ttine.prefwindowTitle "Tine 2.0 Sync Preferences...">
 <!ENTITY ttine.prefwindowToolbarHost "Host setup">
 <!ENTITY ttine.prefwindowToolbarContacts "Contacts">
+<!ENTITY ttine.prefwindowToolbarCalendars "Calendars">
+<!ENTITY ttine.prefwindowToolbarTasks "Tasks">
 <!ENTITY ttine.prefwindowToolbarAbout "About">
 
 <!ENTITY ttine.prefwindowServer "ActiveSync server configuration">
@@ -20,16 +22,20 @@
 <!ENTITY ttine.prefwindowInterval2 "minutes">
 <!ENTITY ttine.prefwindowCheckFolder "check remote folders before syncing">
 <!ENTITY ttine.prefwindowLimitPicSize "limit picture size (ActiveSync standard ~36 KB)">
-<!ENTITY ttine.prefwindowIPhone "pretend to be a iPhone">
 <!ENTITY ttine.prefwindowFullSilence "Disable all output, getting full silence">
+<!ENTITY ttine.prefwindowFullSyncOnInit "Skip full synchronization at startup">
 
 <!ENTITY ttine.prefwindowLocalBooks "local address books">
+<!ENTITY ttine.prefwindowLocalCalendars "local calenders">
+<!ENTITY ttine.prefwindowLocalTasks "local tasks">
 <!ENTITY ttine.prefwindowAddNew "Add new address book...">
 <!ENTITY ttine.prefwindowReinitialize "re-initialize selected book">
 <!ENTITY ttine.prefwindowReinitializeText "Initialize book: If you choose an address book which has been used for syncing before, 
 			click initialize book to resync existing contacts. Otherwise some contacts may not be synced.
 			This can lead to duplicates in non-empty books.">
-<!ENTITY ttine.prefwindowRemoteFolders "remote contact folders">
+<!ENTITY ttine.prefwindowRemoteContacts "remote contact folders">
+<!ENTITY ttine.prefwindowRemoteCalendars "remote calendar folders">
+<!ENTITY ttine.prefwindowRemoteTasks "remote tasks folders">
 <!ENTITY ttine.prefwindowRemoteRefresh "refresh folder list...">
 
 <!ENTITY ttine.prefwindowAbout1 "This extension syncs Thunderbird's contacts against 
@@ -43,3 +49,15 @@
 	I will give you a german bank account number to which you can donate a little amount. 
 	Any amount is welcome - for me it is totally apropriate if you donate as much as two beers 
 	approximatly cost in your favourite pub at your place. Thank you.">
+
+<!ENTITY ttine.syncConfigTitle "Tine 2.0 Sync Configuration...">
+<!ENTITY ttine.syncButtonLabel "configure...">
+
+<!ENTITY ttine.localCaption "Local">
+<!ENTITY ttine.localCreate "Create">
+<!ENTITY ttine.localDelete "Delete">
+<!ENTITY ttine.remoteCaption "Server">
+<!ENTITY ttine.remoteCreate "Create">
+<!ENTITY ttine.remoteDelete "Delete">
+<!ENTITY ttine.remoteUpdate "Rename">
+<!ENTITY ttine.remoteRefresh "Refresh">

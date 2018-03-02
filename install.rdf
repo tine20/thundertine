@@ -5,11 +5,11 @@
   <RDF:Description RDF:about="rdf:#$h+NjE2"
                    em:id="{3550f703-e582-4d05-9a08-453d09bdfdc6}"
                    em:minVersion="3.0"
-                   em:maxVersion="3.1.*" />
+                   em:maxVersion="8.*" />
   <RDF:Description RDF:about="urn:mozilla:install-manifest"
                    em:id="thundertine@santa.noel"
                    em:name="ThunderTine"
-                   em:version="0.2"
+                   em:version="0.4b"
                    em:creator="Santa Noel"
                    em:description="Sync against Tine 2.0 Groupware"
                    em:iconURL="chrome://ttine/skin/ttine.png"
